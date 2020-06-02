@@ -1,7 +1,7 @@
-import os
+import io
 import random
-from urllib.request import urlretrieve
 
+import requests
 from pydub import AudioSegment
 
 
@@ -23,13 +23,9 @@ class Channel:
         self.url = url
         self.audio_id = audio_id
         self.name = name
-        self.filename = '/home/eskil/PycharmProjects/Discord/AmbientBot/mp3/' + url.rpartition('/')[2]
-        if not os.path.isfile(self.filename):
-            urlretrieve(self.url, self.filename)
-
         print('Getting segment: ', self.name)
-        self.segment = AudioSegment.from_file(self.filename, frame_rate=48000, sample_width=1).export(format='ogg', codec='libopus')
-        self.segment = AudioSegment.from_file(self.segment.raw, format='ogg', codec='libopus')
+        mp3 = requests.get(url)
+        self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000)
 
         self.cutoff = 0
         self.schedule = self.random_seg_scheduler()
