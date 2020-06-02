@@ -1,27 +1,17 @@
-import asyncio
+from contextlib import suppress
+import io
 import os
-from io import BufferedIOBase
 
 from bringbuf.bringbuf import bRingBuf
-from discord import opus
+from dotenv import load_dotenv
 import discord
-import io
-import requests
-from bs4 import BeautifulSoup
-from discord import Client
+from discord import opus
 from discord.ext import commands, tasks
+from discord.utils import get
 import ffmpeg
 from pydub import AudioSegment as AS, effects
 
-from contextlib import suppress
-
-
-from discord.utils import get
-
 from .scene import Scene
-
-from dotenv import load_dotenv
-
 
 load_dotenv()
 BOT_TOKEN = os.getenv('TOKEN')
