@@ -295,4 +295,4 @@ async def play(ctx, url):
 # await ctx.send(channel.__dict__)
 
 # load_opus_lib()
-bot.run(TOKEN)
+bot.run(BOT_TOKEN)
