@@ -10,7 +10,7 @@ class Channel:
         self.crossfade = crossfade
 
         if random_unit[-1] in 'h':
-            self.random_unit = 60*60
+            self.random_unit = 3600
         else:
             self.random_unit = (int(random_unit[:-1])*60)
 
