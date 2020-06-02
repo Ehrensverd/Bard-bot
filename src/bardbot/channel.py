@@ -28,7 +28,7 @@ class Channel:
             urlretrieve(self.url, self.filename)
 
         print('Getting segment ', self.name)
-        self.segment = AudioSegment.from_file(self.filename, frame_rate=48000, sample_width=1).export('-', format='ogg', codec='libopus')
+        self.segment = AudioSegment.from_file(self.filename, frame_rate=48000, sample_width=1).export( format='ogg', codec='libopus')
         #'/home/eskil/PycharmProjects/Discord/AmbientBot/mp3/temp.ogg
         self.segment = AudioSegment.from_file(self.segment.raw, format='ogg', codec='libopus')
 

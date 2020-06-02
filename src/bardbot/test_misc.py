@@ -3,9 +3,9 @@ import random
 from pydub import AudioSegment
 from pydub.playback import play
 
-from .mix import Mix
+from bardbot.scene import Scene
 
-mix = Mix('https://movies-other.ambient-mixer.com/mr--tumnus--house')
+mix = Scene('https://movies-other.ambient-mixer.com/mr--tumnus--house')
 
 
 seg = AudioSegment.empty()

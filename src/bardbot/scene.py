@@ -9,7 +9,7 @@ from .channel import Channel
 from pydub import AudioSegment
 
 
-class Mix:
+class qScene:
     """
         A class to represent an audio scene.
 

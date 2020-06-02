@@ -80,7 +80,7 @@ celerybeat-schedule
 *.sage.py
 
 # dotenv
-.env
+src/bardbot/.env
 
 # virtualenv
 .venv

@@ -18,7 +18,7 @@ from contextlib import suppress
 
 from discord.utils import get
 
-from .mix import Mix
+from .scene import Scene
 
 from dotenv import load_dotenv
 
@@ -194,7 +194,7 @@ async def test(ctx, url):
     else:
         await voice.move_to(channel)
 
-    mix, buf = get_set(url)
+    scene, buf = get_set(url)
 
     # slow_count.start(mix, buf)
 
@@ -203,13 +203,13 @@ async def test(ctx, url):
 
 
 def get_set(url):
-    mix = Mix(url)
+    scene = Scene(url)
     buff = bRingBuf(3840000)
     while buff.len < 384000:
-        buff.enqueue(next(mix.gen).raw_data)
+        buff.enqueue(next(scene.gen).raw_data)
 
     print('ready set go')
-    return mix, buff
+    return scene, buff
 
 
 @tasks.loop(seconds=0.1)
