@@ -58,8 +58,13 @@ class Scene:
                         channel.is_active = True
                         channel.seg_gen = channel.segment_generator()
                 if channel.is_active:
-                    seg = next(channel.seg_gen)
-                    segment = segment.overlay(seg)
+                    try:
+                        seg = next(channel.seg_gen)
+                        segment = segment.overlay(seg)
+                    except StopIteration:
+                        print("Exception: ", channel.name, "is random: " ,channel.is_random, "is active: ", channel.is_active)
+                        continue
+
             yield segment
 
 
