@@ -109,20 +109,20 @@ class Scene:
                 if item.findtext('id_audio') == '0':
                     continue
                 else:
-                    audio_id = item.findtext('id_audio')
+                    audio_id = int(item.findtext('id_audio'))
                     audio_name = item.findtext('name_audio')
-                    link = item.findtext('url_audio')
-                    mute = item.findtext('mute')
-                    volume = item.findtext('volume')
-                    balance = item.findtext('balance')
+                    mp3_url = item.findtext('url_audio')
+                    mute = (item.findtext('mute') == 'true')
+                    volume = int(item.findtext('volume'))
+                    balance = int(item.findtext('balance'))
                     is_random = (item.findtext('random') == 'true')
-
-                    random_counter = item.findtext('random_counter')
+                    random_counter = int(item.findtext('random_counter'))
                     random_unit = item.findtext('random_unit')
-                    cross_fade = item.findtext('crossfade')
-                    channels['channel' + str(num)] = Channel(audio_name, audio_id, link, mute, volume, balance,
+                    cross_fade = (item.findtext('crossfade') == 'true')
+
+                    channels['channel' + str(num)] = Channel(audio_name, audio_id, mp3_url, mute, volume, balance,
                                                              is_random,
                                                              random_counter, random_unit, cross_fade)
 
-                num = num + 1
+                num += 1
         return channels
