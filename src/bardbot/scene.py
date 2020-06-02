@@ -18,20 +18,6 @@ class Scene:
         channels : dict { channel# : channel instance}
             collection of all channels in the scene mix
 
-        looped_segments : list [channel#]
-            list of channels that are continuously looping
-
-        random_segments : list [channel#]
-            list of channels that are continuously looping
-
-        is_active : dict { channel# : boolean}
-            dictionary indicating wheter segment is being sent to main stream
-
-        scheduler = dict{channel# : generator }
-            dictionary with generators providing next random play time
-
-        next_play_time = dict {channel# : int}
-            dictionary with next scheduled play time for random type segment
 
         ms, sec, min = int
             Providing time mapping for main generator.
@@ -63,8 +49,7 @@ class Scene:
                     self.min += 1
                     if self.min >= 60:
                         self.min = 0
-            if self.ms == 0:
-                print('new empty')
+
             segment = AudioSegment.silent(duration=20)
             for channel in self.channels.values():
                 if not channel.is_active:
@@ -73,17 +58,8 @@ class Scene:
                         channel.is_active = True
                         channel.seg_gen = channel.segment_generator()
                 if channel.is_active:
-                    if self.ms == 0:
-                        print('Adding: ', channel.name)
-
-                    try:
-                        seg = next(channel.seg_gen)
-                        segment = segment.overlay(seg)
-                    except StopIteration:
-                        continue
-            if self.ms == 0:
-                print('yielding 20ms merged')
-
+                    seg = next(channel.seg_gen)
+                    segment = segment.overlay(seg)
             yield segment
 
 
