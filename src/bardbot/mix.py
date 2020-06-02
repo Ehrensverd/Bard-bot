@@ -5,7 +5,7 @@ from xml.etree import ElementTree
 import requests
 from bs4 import BeautifulSoup
 
-from channel import Channel
+from .channel import Channel
 from pydub import AudioSegment
 
 

@@ -5,7 +5,6 @@ from io import BufferedIOBase
 from bringbuf.bringbuf import bRingBuf
 from discord import opus
 import discord
-import ffmpeg
 import io
 import requests
 from bs4 import BeautifulSoup
@@ -19,8 +18,7 @@ from contextlib import suppress
 
 from discord.utils import get
 
-import ambient
-from mix import Mix
+from .mix import Mix
 
 from dotenv import load_dotenv
 
@@ -46,9 +44,6 @@ def load_opus_lib(opus_libs=OPUS_LIBS):
 
 def ptype(obj):
     print(type(obj))
-
-
-
 
 
 bot = commands.Bot(command_prefix='!')
@@ -295,4 +290,5 @@ async def play(ctx, url):
 # await ctx.send(channel.__dict__)
 
 # load_opus_lib()
-bot.run(BOT_TOKEN)
+def main():
+    bot.run(BOT_TOKEN)
