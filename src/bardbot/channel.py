@@ -25,9 +25,10 @@ class Channel:
         self.name = name
         print('Getting segment: ', self.name)
         mp3 = requests.get(url)
-        self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000)
+        self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000, parameters=["-vol", str(volume)]).pan(balance/50)
+        if crossfade:
+            self.segment = self.segment.fade_in(1000).fade_out(1000)
 
-        self.cutoff = 0
         self.schedule = self.random_seg_scheduler()
         self.next_play_time = next(self.schedule)
         self.seg_gen = self.segment_generator()
