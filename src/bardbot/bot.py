@@ -59,7 +59,7 @@ async def on_ready():
 
 @bot.event
 async def on_disconnect():
-    print(f'{bot.user} has disconnected to Discord!')
+    print(f'{bot.user} has disconnected from Discord!')
     channel = bot.get_channel(689397500863578122)
     await channel.send('bot offline')
 

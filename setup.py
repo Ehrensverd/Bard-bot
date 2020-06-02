@@ -47,11 +47,13 @@ setup(
     keywords="DnD Discord Bot Soundboard DM",
     setup_requires=[
         "setuptools_scm>=1.7",
+        "wheel",
     ],
     install_requires=[
         "bringbuf",  # FIXME: TEMP
         "ffmpeg",  # FIXME: TEMP
         "python-dotenv",  # FIXME: TEMP
+        "PyNaCl",
         "beautifulsoup4",
         "discord.py",
         "requests",
