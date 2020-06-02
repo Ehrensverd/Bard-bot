@@ -1,13 +1,11 @@
-import random
 from urllib.request import urlopen
 from xml.etree import ElementTree
 
-import requests
 from bs4 import BeautifulSoup
+from pydub import AudioSegment
+import requests
 
 from .channel import Channel
-from pydub import AudioSegment
-
 
 class Scene:
     """
