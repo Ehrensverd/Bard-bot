@@ -104,6 +104,5 @@ class Scene:
                     channels['channel' + str(num)] = Channel(audio_name, audio_id, mp3_url, mute, volume, balance,
                                                              is_random,
                                                              random_counter, random_unit, cross_fade)
-
                 num += 1
         return channels

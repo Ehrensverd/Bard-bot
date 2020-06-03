@@ -29,8 +29,9 @@ class Channel:
         if crossfade:
             self.segment = self.segment.fade_in(1000).fade_out(1000)
 
-        self.schedule = self.random_seg_scheduler()
-        self.next_play_time = next(self.schedule)
+        if is_random:
+            self.schedule = self.random_seg_scheduler()
+            self.next_play_time = next(self.schedule)
         self.seg_gen = self.segment_generator()
 
     def segment_generator(self):
@@ -65,6 +66,10 @@ class Channel:
         rate = self.random_count
         start_times = ((segment_length - 1000) * i + x for i, x in
                        enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
+        start_times = list(start_times)
+        print("Start times: ", start_times, "for channel ", self.name)
+        start_times = (time for time in start_times)
+
         while True:
             try:
                 time = next(start_times)//1000
