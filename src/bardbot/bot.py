@@ -1,3 +1,4 @@
+from collections import deque
 from contextlib import suppress
 import io
 import os
@@ -8,7 +9,7 @@ import discord
 from discord import opus
 from discord.ext import commands, tasks
 from discord.utils import get
-from pydub import AudioSegment as dubas
+from pydub import AudioSegment as As
 
 from .scene import Scene
 
@@ -59,11 +60,68 @@ async def test4(ctx, mp3):
     else:
         await voice.move_to(channel)
 
-    input4 = dubas.from_mp3(mp3).set_frame_rate(48000)
+    input4 = As.from_mp3(mp3).set_frame_rate(48000)
     export = input4.export(format='opus', codec='libopus')
     voice.stop()
     voice.play(discord.FFmpegOpusAudio(export.raw, pipe=True, codec='libopus'))
 
+
+class Bard(discord.AudioSource):
+    def __init__(self, size=10):
+        self.source = None
+        self.deque = None
+        self.size = size
+
+    def add_source(self, source: As):
+        self.source = source
+        self.deque = deque(maxlen=self.size)
+        self.deque.append(next(self.source))
+
+    @tasks.loop(seconds=0.01)
+    async def fill(self):
+        if self.source is None:
+            print("NOPE")
+            return
+
+        if len(self.deque) < self.size:
+            try:
+                segment = next(self.source)
+                self.deque.append(segment)
+            except StopIteration:
+                print(self)
+                print("source depleted")
+
+    def read(self):
+        if self.source is None:
+            print("NOPE")
+            return b""
+        try:
+            return self.deque.pop().raw_data
+        except IndexError:
+            print("Playback done")
+            return b""
+
+    def cleanup(self):
+        print("Stopping deque filling")
+        self.fill.stop()
+
+bard = Bard()
+
+@bot.command()
+async def test_deque(ctx, mp3):
+    channel = ctx.message.author.voice.channel
+    voice = get(bot.voice_clients, guild=ctx.guild)
+    if not voice or not voice.is_connected():
+        voice = await channel.connect()
+        await voice.move_to(channel)
+    else:
+        await voice.move_to(channel)
+
+    voice.stop()  # ensures current playback is stopped before continuing
+    source = As.from_mp3(mp3).set_frame_rate(48000)[:4000:20]
+    bard.add_source(source)
+    bard.fill.start()  # denne restartes ikke
+    voice.play(bard)
 
 
 @bot.command()
@@ -77,7 +135,7 @@ async def test2(ctx, mp3):
     else:
         await voice.move_to(channel)
 
-    out = dubas.from_mp3(mp3).set_frame_rate(48000).set_sample_width(2)
+    out = As.from_mp3(mp3).set_frame_rate(48000).set_sample_width(2)
     out = io.BytesIO(out.raw_data)
     ptype(out)
 
@@ -91,7 +149,7 @@ def my_after(error):
 
 class Gen_Wrapper(discord.AudioSource):
     def __init__(self, mp3):
-        self.seg = dubas.from_mp3(mp3).set_frame_rate(48000)[::20]
+        self.seg = As.from_mp3(mp3).set_frame_rate(48000)[::20]
 
     def read(self, _):
         return next(self.seg).raw_data
