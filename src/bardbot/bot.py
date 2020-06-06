@@ -118,7 +118,23 @@ async def test_deque(ctx, mp3):
         await voice.move_to(channel)
 
     voice.stop()  # ensures current playback is stopped before continuing
-    source = As.from_mp3(mp3).set_frame_rate(48000)[:4000:20]
+    source = As.from_mp3(mp3).set_frame_rate(48000)[:40000:20]
+    bard.add_source(source)
+    bard.fill.start()  # denne restartes ikke
+    voice.play(bard)
+
+@bot.command()
+async def test_deque_scene(ctx, url):
+    channel = ctx.message.author.voice.channel
+    voice = get(bot.voice_clients, guild=ctx.guild)
+    if not voice or not voice.is_connected():
+        voice = await channel.connect()
+        await voice.move_to(channel)
+    else:
+        await voice.move_to(channel)
+
+    voice.stop()  # ensures current playback is stopped before continuing
+    source = Scene(url).gen
     bard.add_source(source)
     bard.fill.start()  # denne restartes ikke
     voice.play(bard)
