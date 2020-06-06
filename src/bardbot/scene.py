@@ -7,6 +7,7 @@ import requests
 
 from .channel import Channel
 
+
 class Scene:
     """
         A class to represent an audio scene.
@@ -45,16 +46,22 @@ class Scene:
                 self.ms = 0
                 self.sec += 1
                 if self.sec >= 60:
+                    print(self.sec)
                     self.sec = 0
                     self.min += 1
+                    for channel in self.channels.values():
+                        if channel.depleted and channel.random_unit == 1:
+                            channel.depleted = False
+                        if min == 10 and channel.random_unit == 10:
+                            channel.depleted = False
                     if self.min >= 60:
                         self.min = 0
 
             segment = AudioSegment.silent(duration=20)
             for channel in self.channels.values():
                 if not channel.is_active:
-                    if channel.next_play_time <= self.sec + self.min * 60:
-                        print('channel ', channel.name , ' is now active')
+                    if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
+                        print('channel ', channel.name, ' is now active at time ', self.sec + (self.min * 60))
                         channel.is_active = True
                         channel.seg_gen = channel.segment_generator()
                 if channel.is_active:
@@ -62,12 +69,12 @@ class Scene:
                         seg = next(channel.seg_gen)
                         segment = segment.overlay(seg)
                     except StopIteration:
-                        print("Exception: ", channel.name, "is random: " ,channel.is_random, "is active: ", channel.is_active)
+                        print("Exception: ", channel.name, "is random:", channel.is_random, "| Is active:",
+                              channel.is_active)
+
                         continue
 
             yield segment
-
-
 
     def get_channels(self, url):
         """Parses channels from XML file

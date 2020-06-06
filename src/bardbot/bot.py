@@ -67,7 +67,7 @@ async def test4(ctx, mp3):
 
 
 class Bard(discord.AudioSource):
-    def __init__(self, size=10):
+    def __init__(self, size=15):
         self.source = None
         self.deque = None
         self.size = size
@@ -134,6 +134,7 @@ async def test_deque_scene(ctx, url):
         await voice.move_to(channel)
 
     voice.stop()  # ensures current playback is stopped before continuing
+    bard.cleanup()
     source = Scene(url).gen
     bard.add_source(source)
     bard.fill.start()  # denne restartes ikke

@@ -27,10 +27,11 @@ class Channel:
         mp3 = requests.get(url)
         self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000,
                                               parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(balance / 50)
-
+        self.depleted = False
         if is_random:
             self.schedule = self.random_seg_scheduler()
             self.next_play_time = next(self.schedule)
+
         self.seg_gen = self.segment_generator()
 
     def crossfader(self):
@@ -85,6 +86,8 @@ class Channel:
         segment_length = int(self.segment.duration_seconds * 1000)
         period = self.random_unit * 1000
         rate = self.random_count
+        print("Schedule stats  for: ", self.name, "Segment length: ", segment_length/1000, "random unit: ", period, "random rate: ", rate )
+
         start_times = ((segment_length - 1000) * i + x for i, x in
                        enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
         start_times = list(start_times)
@@ -97,6 +100,13 @@ class Channel:
                 yield time
             except StopIteration:
                 print('Segment ', self.name, ' schedule depleted')
+                print("Schedule stats  for: ", self.name, "Segment length: ", segment_length / 1000, "random unit: ",
+                      period, "random rate: ", rate)
+
                 start_times = ((segment_length - 1000) * i + x for i, x in
                                enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
+                start_times = list(start_times)
+                print("Start times: ", start_times, "for channel ", self.name)
+                start_times = (time for time in start_times)
+                self.depleted = True
                 continue
