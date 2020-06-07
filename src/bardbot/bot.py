@@ -124,7 +124,7 @@ async def test_deque(ctx, mp3):
     voice.play(bard)
 
 @bot.command()
-async def test_deque_scene(ctx, url):
+async def scene(ctx, url):
     channel = ctx.message.author.voice.channel
     voice = get(bot.voice_clients, guild=ctx.guild)
     if not voice or not voice.is_connected():
@@ -133,18 +133,43 @@ async def test_deque_scene(ctx, url):
     else:
         await voice.move_to(channel)
 
-
     source = Scene(url).gen
-    bard.add_source(source)
-    bard.fill.cancel()
+
+    if voice.is_playing():
+        bard.source = source
+    else:
+        bard.add_source(source)
+
+
     try:
         bard.fill.start()  # denne restartes ikke
     except RuntimeError:
         bard.fill.restart()
-    voice.stop()  # ensures current playback is stopped before continuing
 
-    voice.play(bard)
+    if voice.is_playing(): # change source
+        pass
+    else:
+        voice.play(bard)
 
+@bot.command()
+async def pause(ctx):
+
+    voice = get(bot.voice_clients, guild=ctx.guild)
+
+    if voice.is_playing():
+        voice.pause()
+    elif voice.is_paused():
+        voice.resume()
+
+@bot.command()
+async def resume(ctx):
+
+    voice = get(bot.voice_clients, guild=ctx.guild)
+
+    if voice.is_playing():
+        pass
+    elif voice.is_paused():
+        voice.resume()
 
 @bot.command()
 async def test2(ctx, mp3):
