@@ -35,7 +35,15 @@ class Scene:
         self.gen = self.main_generator()
         self.playlist = []
         self.playlist_gen = self.playlist_generator()
-        self.playing_music = False
+        self.music_playing = False
+        self.scene_playing = True
+        self.muted_channels = {}
+
+    def mute_channel(self, channel):
+        self.muted_channels[channel] = self.channels.pop(channel)
+
+    def unmute_channel(self, channel):
+        self.channels[channel] = self.muted_channels.pop(channel)
 
     def main_generator(self):
         """Generates 20ms worth of opus encoded raw bytes
@@ -64,19 +72,21 @@ class Scene:
                         self.min = 0
 
             segment = AudioSegment.silent(duration=20)
-            for channel in self.channels.values():
-                if not channel.is_active:
-                    if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
-                        print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
-                        channel.is_active = True
-                        channel.seg_gen = channel.segment_generator()
-                if channel.is_active:
-                    try:
-                        segment = segment.overlay(next(channel.seg_gen))
-                    except StopIteration:
-                        print(channel.name, "finished playing")
-                        continue
-            if self.playing_music and not self.playlist:
+            if self.scene_playing:
+                for channel in self.channels.values():
+                    if not channel.is_active:
+                        if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
+                            print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
+                            channel.is_active = True
+                            channel.seg_gen = channel.segment_generator()
+                    if channel.is_active:
+                        try:
+                            segment = segment.overlay(next(channel.seg_gen))
+                        except StopIteration:
+                            print(channel.name, "finished playing")
+                            continue
+
+            if self.music_playing and not self.playlist:
                 segment = segment.overlay(next(self.playlist_gen))
             yield segment
 
