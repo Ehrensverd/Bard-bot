@@ -6,8 +6,8 @@ from pydub import AudioSegment
 
 
 class Channel:
-    def __init__(self, name, audio_id, url, mute, volume, balance, is_random, random_count, random_unit, crossfade):
-        self.crossfade = crossfade
+    def __init__(self, name, audio_id, url, mute, volume, balance, is_random, random_count, random_unit, is_crossfade):
+        self.crossfade = is_crossfade
 
         if random_unit[-1] in 'h':
             self.random_unit = 3600
@@ -31,19 +31,22 @@ class Channel:
         if is_random:
             self.schedule = self.random_seg_scheduler()
             self.next_play_time = next(self.schedule)
+        if is_crossfade:
+            self.initial, self.crossfaded = self.crossfader()
 
         self.seg_gen = self.segment_generator()
 
     def crossfader(self):
         """Generate initial crossfaded segment and loopable crossfaded segment"""
         # end crossfaded
-        initial = self.segment.append(self.segment[:200], crossfade=150)
+        initial = self.segment.append(self.segment[:2100], crossfade=1500)
         initial = initial[:len(self.segment)]
 
         # Start and end crossfaded
-        crossfaded = self.segment[-200:].append(initial, crossfade=150)
-        crossfaded = crossfaded[-len(self.segment)]
-        return initial[::20], crossfaded[::20]
+        crossfaded = self.segment[-2100:].append(initial, crossfade=1500)
+
+        crossfaded = crossfaded[-len(self.segment):].set_frame_rate(48000)
+        return initial[::20], crossfaded
 
     def segment_generator(self):
         """Generate 20 ms AudioSegments.
@@ -54,11 +57,10 @@ class Channel:
         """
 
         if self.crossfade and not self.is_random:
-            initial, slices = self.crossfader()
-
+            slices = self.crossfaded[::20]
             while True:
                 try:
-                    yield next(initial)
+                    yield next(self.initial)
                 except StopIteration:
                     break
         else:
@@ -73,7 +75,10 @@ class Channel:
                     self.next_play_time = next(self.schedule)
                     return
                 else:
-                    slices = self.segment[::20]
+                    if self.crossfade and not self.is_random:
+                        slices = self.crossfaded[::20]
+                    else:
+                        slices = self.segment[::20]
                     continue
 
     def random_seg_scheduler(self):
