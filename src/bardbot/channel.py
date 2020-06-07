@@ -40,14 +40,11 @@ class Channel:
         """Generate initial crossfaded segment and loopable crossfaded segment"""
         # end crossfaded
         initial = self.segment.append(self.segment[:300], crossfade=150)
-
         initial = initial[:len(self.segment)].fade_in(20).fade_out(20)
-        print("initial framerate2:",initial.frame_rate)
+
         # Start and end crossfaded
         crossfaded = self.segment[-300:].append(initial, crossfade=150)
-
         crossfaded = crossfaded[-len(self.segment):].fade_in(20).fade_out(20)
-        print("crossfade framerate", crossfaded.frame_rate)
         return initial[::20], crossfaded
 
     def segment_generator(self):
@@ -60,6 +57,7 @@ class Channel:
 
         if self.crossfade and not self.is_random:
             slices = self.crossfaded[::20]
+            # initial loop
             while True:
                 try:
                     yield next(self.initial)

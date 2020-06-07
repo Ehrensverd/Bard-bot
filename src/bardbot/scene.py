@@ -64,7 +64,7 @@ class Scene:
             for channel in self.channels.values():
                 if not channel.is_active:
                     if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
-                        print('channel ', channel.name, ' is now active at time ', self.sec + (self.min * 60))
+                        print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
                         channel.is_active = True
                         channel.seg_gen = channel.segment_generator()
                 if channel.is_active:
@@ -72,9 +72,7 @@ class Scene:
                         seg = next(channel.seg_gen)
                         segment = segment.overlay(seg)
                     except StopIteration:
-                        print("Exception: ", channel.name, "is random:", channel.is_random, "| Is active:",
-                              channel.is_active)
-
+                        print(channel.name, "finished playing")
                         continue
             yield segment
 
