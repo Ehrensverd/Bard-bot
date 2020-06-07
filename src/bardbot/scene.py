@@ -55,6 +55,9 @@ class Scene:
                         if min == 10 and channel.random_unit == 10:
                             channel.depleted = False
                     if self.min >= 60:
+                        for channel in self.channels.values():
+                            if channel.depleted and channel.random_unit == 3600:
+                                channel.depleted = False
                         self.min = 0
 
             segment = AudioSegment.silent(duration=20)
@@ -73,7 +76,6 @@ class Scene:
                               channel.is_active)
 
                         continue
-
             yield segment
 
     def get_channels(self, url):
