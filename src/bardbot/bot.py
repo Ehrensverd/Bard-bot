@@ -28,12 +28,6 @@ def load_opus_lib(opus_libs=OPUS_LIBS):
             return
         raise RuntimeError(f"Could not load an opus lib ({opus_lib}). Tried {', '.join(opus_libs)}")
 
-def ptype(obj):
-    print(type(obj))
-
-
-
-
 
 @bot.event
 async def on_ready():
@@ -48,22 +42,6 @@ async def on_disconnect():
     print(f'{bot.user} has disconnected from Discord!')
     channel = bot.get_channel(689397500863578122)
     await channel.send('bot offline')
-
-
-@bot.command()
-async def test4(ctx, mp3):
-    channel = ctx.message.author.voice.channel
-    voice = get(bot.voice_clients, guild=ctx.guild)
-    if not voice or not voice.is_connected():
-        voice = await channel.connect()
-        await voice.move_to(channel)
-    else:
-        await voice.move_to(channel)
-
-    input4 = As.from_mp3(mp3).set_frame_rate(48000)
-    export = input4.export(format='opus', codec='libopus')
-    voice.stop()
-    voice.play(discord.FFmpegOpusAudio(export.raw, pipe=True, codec='libopus'))
 
 
 class Bard(discord.AudioSource):
@@ -170,110 +148,6 @@ async def resume(ctx):
         pass
     elif voice.is_paused():
         voice.resume()
-
-@bot.command()
-async def test2(ctx, mp3):
-    channel = ctx.message.author.voice.channel
-    voice = get(bot.voice_clients, guild=ctx.guild)
-    if not voice or not voice.is_connected():
-        voice = await channel.connect()
-        await voice.move_to(channel)
-
-    else:
-        await voice.move_to(channel)
-
-    out = As.from_mp3(mp3).set_frame_rate(48000).set_sample_width(2)
-    out = io.BytesIO(out.raw_data)
-    ptype(out)
-
-    voice.stop()
-    voice.play(discord.PCMAudio(out))
-
-
-def my_after(error):
-   print('Player ended, empty stream')
-
-
-class Gen_Wrapper(discord.AudioSource):
-    def __init__(self, mp3):
-        self.seg = As.from_mp3(mp3).set_frame_rate(48000)[::20]
-
-    def read(self, _):
-        return next(self.seg).raw_data
-
-class Mix_Wrapper(discord.PCMAudio):
-    def __init__(self, gen):
-        self.gen = gen
-
-    def read(self, frames):
-        # self.buffer.write(next(self.mix.gen).raw_data)
-        # return self.buffer.read(frames)
-        print('playing', frames)
-        return self.gen.deque(frames)
-
-
-
-
-@bot.command()
-async def test(ctx, url):
-    channel = ctx.message.author.voice.channel
-    if not channel:
-        await ctx.send("You are not connected to a voice channel")
-        return
-
-    voice = get(bot.voice_clients, guild=ctx.guild)
-    if not voice or not voice.is_connected():
-        voice = await channel.connect()
-        await voice.move_to(channel)
-
-    else:
-        await voice.move_to(channel)
-
-    scene, buf = get_set(url)
-
-    # slow_count.start(mix, buf)
-
-    print('Discord player playing from stream')
-    voice.play(discord.PCMAudio(Mix_Wrapper(buf)), after=my_after)
-
-
-def get_set(url):
-    print("Setting up scene and buffer.")
-    scene = Scene(url)
-    buff = bRingBuf(3840000)
-    while buff.len < 384000:
-        buff.enqueue(next(scene.gen).raw_data)
-    print("Buffer ready.")
-    return scene, buff
-
-
-@tasks.loop(seconds=0.1)
-async def slow_count(mix, buf):
-    if buf.len < 34800:
-        for _ in range(0, 10):
-            buf.enque(next(mix.gen).raw_data)
-        print('loop added')
-
-class StreamRW(io.BufferedRandom):
-    def __init__(self, raw):
-        super().__init__(raw)
-        self.seek(0)
-
-    def read(self, size=1):
-        super().seek(self.read_offset)
-        data = super().read(size)
-        self.read_offset = self.tell()
-        return data
-
-    def write(self, data):
-        super().seek(self.write_offset)
-        written = super().write(data)
-        self.write_offset = self.tell()
-        return written
-
-    def seek(self, offset, whence=0):
-        super().seek(offset)
-        self.read_offset = self.write_offset = self.tell()
 
 
 
