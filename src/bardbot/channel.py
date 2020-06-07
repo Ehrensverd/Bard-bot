@@ -26,7 +26,7 @@ class Channel:
         print('Getting segment: ', self.name)
         mp3 = requests.get(url)
         self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000,
-                                              parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(balance / 50)
+                                              parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(balance / 50).fade_in(20).fade_out(20)
         self.depleted = False
         if is_random:
             self.schedule = self.random_seg_scheduler()
@@ -39,13 +39,15 @@ class Channel:
     def crossfader(self):
         """Generate initial crossfaded segment and loopable crossfaded segment"""
         # end crossfaded
-        initial = self.segment.append(self.segment[:2100], crossfade=1500)
-        initial = initial[:len(self.segment)]
+        initial = self.segment.append(self.segment[:5500], crossfade=1100)
 
+        initial = initial[:len(self.segment)].fade_in(20).fade_out(20)
+        print("initial framerate2:",initial.frame_rate)
         # Start and end crossfaded
-        crossfaded = self.segment[-2100:].append(initial, crossfade=1500)
+        crossfaded = self.segment[-5500:].append(initial, crossfade=1100)
 
-        crossfaded = crossfaded[-len(self.segment):].set_frame_rate(48000)
+        crossfaded = crossfaded[-len(self.segment):].fade_in(20).fade_out(20)
+        print("crossfade framerate", crossfaded.frame_rate)
         return initial[::20], crossfaded
 
     def segment_generator(self):
@@ -75,7 +77,7 @@ class Channel:
                     self.next_play_time = next(self.schedule)
                     return
                 else:
-                    if self.crossfade and not self.is_random:
+                    if self.crossfade:
                         slices = self.crossfaded[::20]
                     else:
                         slices = self.segment[::20]
