@@ -3,6 +3,7 @@ from contextlib import suppress
 import io
 import os
 
+from bardbot.presets import scenes
 from bringbuf.bringbuf import bRingBuf
 from dotenv import load_dotenv
 import discord
@@ -32,7 +33,7 @@ def load_opus_lib(opus_libs=OPUS_LIBS):
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
-    channel = bot.get_channel(689397500863578122)
+    channel = bot.get_channel(719204954514128938)
     await channel.send('bot online')
     print('opusloaded: ', discord.opus.is_loaded())
 
@@ -53,7 +54,7 @@ class Bard(discord.AudioSource):
     def add_source(self, source: As):
         self.source = source
         self.deque = deque(maxlen=self.size)
-        self.deque.append(next(self.source))
+        self.deque.append(next(self.source.gen))
 
     @tasks.loop(seconds=0.01)
     async def fill(self):
@@ -63,7 +64,7 @@ class Bard(discord.AudioSource):
 
         if len(self.deque) < self.size:
             try:
-                segment = next(self.source)
+                segment = next(self.source.gen)
                 self.deque.append(segment)
             except StopIteration:
                 print(self)
@@ -111,9 +112,12 @@ async def scene(ctx, url):
     else:
         await voice.move_to(channel)
 
-    source = Scene(url).gen
+    print("Get Scene")
+    source = Scene(url)
+    print("Scene done?")
 
     if voice.is_playing():
+        print("Set new source")
         bard.source = source
     else:
         bard.add_source(source)
@@ -122,12 +126,46 @@ async def scene(ctx, url):
     try:
         bard.fill.start()  # denne restartes ikke
     except RuntimeError:
+        print("Restart task")
         bard.fill.restart()
 
-    if voice.is_playing(): # change source
-        pass
-    else:
+    if not voice.is_playing(): # change source
         voice.play(bard)
+
+@bot.command()
+async def play(ctx, url):
+    channel = ctx.message.author.voice.channel
+    voice = get(bot.voice_clients, guild=ctx.guild)
+    if not voice or not voice.is_connected():
+        voice = await channel.connect()
+        await voice.move_to(channel)
+    else:
+        await voice.move_to(channel)
+
+    if url in scenes:
+        url = scenes[url]
+
+    print("Get Scene")
+    source = Scene(url)
+    print("Scene done?")
+
+    if voice.is_playing():
+        print("Set new source")
+        bard.source = source
+    else:
+        bard.add_source(source)
+
+
+    try:
+        bard.fill.start()  # denne restartes ikke
+    except RuntimeError:
+        print("Restart task")
+        bard.fill.restart()
+
+    if not voice.is_playing(): # change source
+        voice.play(bard)
+
+
 
 @bot.command()
 async def pause(ctx):
@@ -149,7 +187,34 @@ async def resume(ctx):
     elif voice.is_paused():
         voice.resume()
 
+@bot.command()
+async def mute_channel(ctx, channel):
 
+    voice = get(bot.voice_clients, guild=ctx.guild)
+    voice.source.source.mute_channel(channel)
+
+# @bot.command()
+# async def resume_music(ctx):
+#
+#     voice = get(bot.voice_clients, guild=ctx.guild)
+#     voice.source.source.music_playing = True
+#
+# @bot.command()
+# async def pause_music(ctx):
+#     voice = get(bot.voice_clients, guild=ctx.guild)
+#     voice.source.source.music_playing = False
+#
+#
+# @bot.command()
+# async def resume_scene(ctx):
+#     voice = get(bot.voice_clients, guild=ctx.guild)
+#     voice.source.source.scene_playing = True
+#
+#
+# @bot.command()
+# async def pause_scene(ctx):
+#     voice = get(bot.voice_clients, guild=ctx.guild)
+#     voice.source.source.scene_playing = False
 
 # load_opus_lib()
 
