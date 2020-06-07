@@ -46,7 +46,6 @@ class Scene:
                 self.ms = 0
                 self.sec += 1
                 if self.sec >= 60:
-                    print(self.sec)
                     self.sec = 0
                     self.min += 1
                     for channel in self.channels.values():
