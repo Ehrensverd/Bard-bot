@@ -24,10 +24,12 @@ class Channel:
         self.audio_id = audio_id
         self.name = name
         print('Prepareing', self.name)
-        mp3 = requests.get(url)
-        self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000,
-                                              parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
-            balance / 50).fade_in(50).fade_out(20)
+        if url:
+            mp3 = requests.get(url)
+            self.segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3', frame_rate=48000,
+                                                  parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
+                balance / 50).fade_in(50).fade_out(20)
+
         self.depleted = False
         if is_random:
             self.schedule = self.random_seg_scheduler()

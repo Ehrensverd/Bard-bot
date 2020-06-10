@@ -71,7 +71,7 @@ class Scene:
                                 channel.depleted = False
                         self.min = 0
 
-            segment = AudioSegment.silent(duration=20)
+            segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
             if self.scene_playing:
                 for channel in self.channels.values():
                     if not channel.is_active:
