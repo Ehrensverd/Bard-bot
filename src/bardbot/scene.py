@@ -1,6 +1,6 @@
 from urllib.request import urlopen
 from xml.etree import ElementTree
-import itertools
+
 
 from bs4 import BeautifulSoup
 from pydub import AudioSegment
@@ -32,10 +32,7 @@ class Scene:
     def __init__(self, url):
         self.channels = self.get_channels(url)
         self.ms = self.sec = self.min = self.hour = 0
-        self.gen = self.main_generator()
-        self.playlist = []
-        self.playlist_gen = self.playlist_generator()
-        self.music_playing = False
+        self.segmenter = self.scene_generator()
         self.scene_playing = True
         self.muted_channels = {}
 
@@ -45,7 +42,7 @@ class Scene:
     def unmute_channel(self, channel):
         self.channels[channel] = self.muted_channels.pop(channel)
 
-    def main_generator(self):
+    def scene_generator(self):
         """Generates 20ms worth of opus encoded raw bytes
         Checks if scheduled segments, and sets to active when needed
 
@@ -85,9 +82,6 @@ class Scene:
                         except StopIteration:
                             print(channel.name, "finished playing")
                             continue
-
-            if self.music_playing and not self.playlist:
-                segment = segment.overlay(next(self.playlist_gen))
             yield segment
 
     def get_channels(self, url):
@@ -129,12 +123,4 @@ class Scene:
         return channels
 
 
-    def playlist_generator(self):
-        for song in itertools.cycle(self.playlist):
-            song_gen = song[::20]
-            while True:
-                try:
-                    yield next(song_gen)
-                except StopIteration:
-                    break
 

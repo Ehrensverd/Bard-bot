@@ -69,7 +69,7 @@ class Bard(discord.AudioSource):
 
         if len(self.deque) < self.size:
             try:
-                segment = next(self.source.gen)
+                segment = next(self.source.segmenter)
                 self.deque.append(segment)
             except StopIteration:
                 print(self)
