@@ -11,19 +11,26 @@ from .channel import Channel
 
 class Scene:
     """
-        A class to represent an audio scene.
-
+        Represents an audio soundscape, like a dark moist cave, battlefield or tavern.
         ...
-
         Attributes
         ----------
         channels : dict { channel# : channel instance}
             collection of all channels in the scene mix
 
+        pause_channels : dict { channel# : channel instance}
+            collection of all paused channels in the scene mix
 
-        ms, sec, min = int
-            Providing time mapping for main generator.
+        ms, sec, min : int
+            Providing time mapping for scene generator.
 
+        segmenter : generator
+            Yields 20ms of mixed audio from all active channels
+
+        scene_volume : int
+            Scene master volume
+
+            
         Methods
         -------
 
@@ -31,16 +38,17 @@ class Scene:
 
     def __init__(self, url):
         self.channels = self.get_channels(url)
+        self.paused_channels = {}
         self.ms = self.sec = self.min = self.hour = 0
         self.segmenter = self.scene_generator()
-        self.scene_playing = True
-        self.muted_channels = {}
+        self.scene_volume = 50
 
-    def mute_channel(self, channel):
-        self.muted_channels[channel] = self.channels.pop(channel)
 
-    def unmute_channel(self, channel):
-        self.channels[channel] = self.muted_channels.pop(channel)
+    def pause_channel(self, channel):
+        self.paused_channels[channel] = self.channels.pop(channel)
+
+    def unpause_channel(self, channel):
+        self.channels[channel] = self.paused_channels.pop(channel)
 
     def scene_generator(self):
         """Generates 20ms worth of opus encoded raw bytes
@@ -57,6 +65,7 @@ class Scene:
                 if self.sec >= 60:
                     self.sec = 0
                     self.min += 1
+                    # Reseting depleted channels 1 min, 10 min and 1 hour
                     for channel in self.channels.values():
                         if channel.depleted and channel.random_unit == 1:
                             channel.depleted = False

@@ -209,13 +209,13 @@ async def resume(ctx):
 async def mute_channel(ctx, channel):
 
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.mute_channel(channel)
+    voice.source.source.pause_channel(channel)
 
 @bot.command()
 async def unmute_channel(ctx, channel):
 
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.unmute_channel(channel)
+    voice.source.source.unpause_channel(channel)
 
 @bot.command()
 async def resume_music(ctx):
