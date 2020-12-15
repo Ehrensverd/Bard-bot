@@ -6,7 +6,9 @@ from pydub import AudioSegment
 
 
 class Channel:
-    def __init__(self, name, audio_id, url, mute, volume, balance, is_random, random_count, random_unit, is_crossfade):
+    def __init__(self, name, audio_id, url, mute,
+                 volume, balance, is_random, random_count,
+                 random_unit, is_crossfade):
         self.crossfade = is_crossfade
 
         if random_unit[-1] in 'h':

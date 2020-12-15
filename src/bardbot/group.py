@@ -8,7 +8,7 @@ class Group:
         self.paused_sources = []
 
 
-        self.base_segment = AudioSegment.silent(duration=20, frame_rate=48000)
+        self.base_segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
     def add_source(self, group):
         self.active_sources.append(group)

@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 import os
 import re
 import sys
+import unicodedata
 from functools import wraps
 
 try:
@@ -284,8 +285,9 @@ class Soundtrack(object):
     def songs(self):
         table = self._contentSoup.find('table', id='songlist')
         anchors = [tr.find('a') for tr in table('tr') if not tr.find('th')]
-        urls = [a['href'] for a in anchors]
-        songs = [Song(urljoin(self.url, url)) for url in urls]
+
+        urls = [(a['href'], unicodedata.normalize("NFKD", a.get_text())) for a in anchors]
+        songs = [Song(urljoin(self.url, url[0]), url[1]) for url in urls]
         return songs
     
     @lazyProperty
@@ -345,8 +347,9 @@ class Song(object):
              is available in more than one format.
     """
     
-    def __init__(self, url):
+    def __init__(self, url, namu):
         self.url = url
+        self.namu = namu
     
     def __repr__(self):
         return "<{}: {}>".format(self.__class__.__name__, self.url)
@@ -415,21 +418,19 @@ class SearchError(KhinsiderError):
 
 def search(term):
     """Return a list of Soundtrack objects for the search term `term`."""
+    if len(term) <3:
+        return []
     soup = getSoup(urljoin(BASE_URL, 'search'), params={'search': term})
     if soup.find("title").text != "Search - \n":
         # this is a soundtrack
         print("this is a soundtrack")
-        url = soup.find_all("audio", {"id":"audio1"})
-        print(url)
-        pass
+        url = soup.find('table', id='songlist').find("a")["href"]
+        return Soundtrack(url.split('/')[-2])
     try:
         anchors = soup('p')[1]('a')
-        print(soup.find("title").text)
-        print(anchors)
     except IndexError:
         raise SearchError(soup.find('p').get_text(strip=True))
     soundtrackIds = [a['href'].split('/')[-1] for a in anchors]
-    print(soundtrackIds)
     return [Soundtrack(id) for id in soundtrackIds]
 
 # --- And now for the execution. ---
