@@ -189,7 +189,7 @@ class Scene:
             self.channel_presets = channel_presets
             self.name = name
         else:
-            #new scene
+            #new sc ene
             self.channel_presets = {}
 
         self.playlist = playlist
@@ -220,6 +220,55 @@ class Channel:
     make segmenter that takes next 20 ms slice from scene_segment[::20] but
     keeps track of position.
 
+    Attributes
+    ----------
+    name : string
+        channel name / filename
+
+    audio_source : AudioSource
+        from file or url
+        file_path   : string
+        mp3         : bytes
+
+    audio_segment : pydub.AudioSegment
+
+    volume : int
+        range: 0-100
+
+    balance : int
+        range: -50 - 50
+
+    is_muted : bool
+
+    is_random : bool
+        indicates channel is played at a random interval
+        thus needs random_rate ratio amount / time_unit
+        randomed channels cannot be crossfaded
+
+    random_ratio : dict {    amount : int
+                           time_unit : int seconds
+                                amount / time_unit
+                                5 times over 10 minutes period
+                           depleted : bool
+                                this indicates that channel has
+                                no more play events for current
+                                time unit iteration and therefore waits
+                            }
+
+    is_crossfaded : bool
+        activates crossfader()
+        adds a smooth volume curve to start and end of segment
+        that also contains overlayed audio from opposite end.
+        creates a smooth loop feel
+
+    is_global_distinct : bool
+        if this channel is playing, then no other
+        global_distinct channel is playing.
+        For playlists channels and other channels that
+        shouldn not be mixed.
+        e.g. Tavern band playlist and battle playlist
+        TODO make into groups of distinct channels
+
     channel_segmenter()
         uses presets in scene channel_preset
         makes 20ms slices and yield to stage generator
@@ -230,20 +279,16 @@ class Channel:
 
     """
 
-    def __init__(self, url, name, stage):
-        self.url = url
-        # self.base_segment
-        if url:
-            mp3 = requests.get(url)
-            self.base_segment = AudioSegment.from_file(io.BytesIO(mp3.content), format='mp3',
-                                                       frame_rate=48000).set_frame_rate(48000)
+    def __init__(self, name, audio_source, balance=0, volume=50, is_muted=False, is_crossfaded=False, is_random=False ):
         self.name = name
+        self.audio_source = audio_source
+        self.balance = balance
+        self.volume = volume
+        self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3', frame_rate=48000,
+                                              parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
+            balance / 50).fade_in(50).fade_out(20)
 
-        # make default preset in all stage scenes
-        for scene in stage.scenes:
-            scene.add_channel(self)
 
-        self.active_scene = stage.active_scene
 
 
     def activate(self):
