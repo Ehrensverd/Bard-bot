@@ -1,44 +1,79 @@
-## stage has all audio clips
-## scenes
-## neighbor stages
-# gloabal stage
-# stage main volume
-
 """
-Words:
+A stage is a collection of Scenes that share  at least 1 channel.
+A channel can only be handled by 1 scene at a time.
+A stage can have multiple scenes.
 
-Stage is the base template of a soundscape.
-A stage can have multiple scenes. And have all channels used by its scenes.
+Reason for stage is so one can easily find related soundscapes and
+be able to seemlessly transition between them.
+Tavern - Busy.
+becomes
+Tavern - Brawl
+With a scene change, channels are gradually shifted towards their new values.
 
-When a stage is loaded into a group it scenes are also loaded and readied
-changes done to a scene presist during group session. Unless saved or reloaded
-Stage handles what channels to yield from, based on active scene
-
-Scene is a configured preset of a soundscape.
-Different Scenes can have different presets for the same channels.
-
-Channel is base audio channel and plays and controls an audiosegment.
-It can be shared / played from different scenes.
-It yields 20ms segments to stage based on active scene
-
-Segmenter is a generator that yields 20ms audio slices
+When a stage is loaded into a group its scenes are also loaded and readied
+Stage yields from active scene to main_mix
 
 Stage has all channels in two collection, active and non active
 on scene change channel collections are updated.
 
-Stage segmenter takes 20ms from each channel segmenter
-
-each channel is told be active scene what configurations it is to use.
-scene also tells stage which channels are active or not.
-
-fra load / new
-først new, so load
-
 """
 import io
+import random
+from urllib.request import urlopen
+from xml.etree import ElementTree
 
 import requests
+from bs4 import BeautifulSoup
 from pydub import AudioSegment
+
+from bardbot.AudioMixer.audio_source import AudioSource
+
+
+
+# Utility
+
+def load_stage_scene(self, file_path):
+    pass
+
+# TODO: make possible to only import subset of channels
+def import_stage(self, url):
+    """Parse channels from XML file
+
+    Returns a dicitionary {channel# : channel instance }
+
+    """
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+
+    temnplate_id = soup.select_one("a[href*=vote]")['href'].rpartition('/')[2]
+    url = 'https://xml.ambient-mixer.com/audio-template?player=html5&id_template=' + str(temnplate_id)
+
+    url = urlopen(url)
+    channels = {}
+    num = 1
+    for item in ElementTree.parse(url).iter():
+
+        if item.tag.startswith('channel'):
+            if item.findtext('id_audio') == '0':
+                continue
+            else:
+                audio_id = int(item.findtext('id_audio'))
+                audio_name = item.findtext('name_audio')
+                mp3_url = item.findtext('url_audio')
+                mute = (item.findtext('mute') == 'true')
+                volume = int(item.findtext('volume'))
+                balance = int(item.findtext('balance'))
+                is_random = (item.findtext('random') == 'true')
+                random_counter = int(item.findtext('random_counter'))
+                random_unit = item.findtext('random_unit')
+                cross_fade = (item.findtext('crossfade') == 'true')
+                audio_source = AudioSource(url=mp3_url)
+
+                # TODO: check if is_active can be deactivated in ambient-mixer while not random, and if it creates issues.
+                channels['channel' + str(num)] = Channel(audio_name, audio_source, random_counter, random_unit, balance,
+                                                         volume, mute, cross_fade, is_random, not is_random)
+
+    return channels
 
 
 class Stage:
@@ -46,124 +81,14 @@ class Stage:
 
     Attributes
     ----------
-    volume : int
+    stage_volume : int
         main volume for stage
 
-    scenes : dict { scene_name : scene instance }
+    scenes : dict { scene_name : scene_presets{}}
         collection of loaded scenes.
         each scene is a different preset for the stage.
-
-    channels : dict { channel_name : channel instance }
-        collection of channels.
-        channel behavior depends on the active scene
-
-    active_scene : scene instance
-        scene from which stage segmenter get channel settings
-
-    stage_segmenter()
-        yields from all active channels and overlays segments
-        and handles scene transitions
-        yields to group mixer
-
-    """
-
-    def __init__(self, connected_stages=None, volume=50, active_channels=None,non_active_channels=None, scenes=None):
-        """"""
-        if not scenes:
-            # New stage
-            scene = Scene("initial scene")
-            self.scenes[scene.name] = self.scenes["default"] = scene
-            self.connected_stages = {}
-            self.active_channels = {}
-            self.non_active_channels = {}
-        else:
-            # Load stage
-            self.active_scene = scenes["default"]
-
-            self.connected_stages = connected_stages
-            self.scenes = scenes
-            self.active_channels = active_channels
-            self.non_active_channels = non_active_channels
-        self.volume = volume
-
-
-
-
-    # Utility
-    def segmenter(self):
-        # put depleted channels into non_active
-        # if past random triggered time unit, reset depleted
-        # check if any non active are scheduled
-
-        # take all channels overlay and yield
-
-
-        pass
-
-
-    # Stage
-    def load_stage(self):
-        pass
-
-    def save_stage(self):
-        pass
-    def start_stage(self):
-        pass
-
-    def pause_stage(self):
-        pass
-
-    def stop_stage(self):
-        pass
-
-
-    # Scene
-
-    def change_scene(self, scene):
-        """"""
-        # check what channels are identical in segment stats, volume, balance
-        # if same check if crossfade or randomly triggered
-        # change segment in channel segmenter
-
-        pass
-
-    def create_scene(self):
-        pass
-
-    def copy_scene(self, scene):
-        pass
-
-    def delete_scene(self, scene):
-        pass
-
-    def save_scene(self, scene):
-        pass
-
-    # Channels
-
-    def new_channel(self):
-
-
-        channel = Channel("url", "name", self)
-        # Get url or file and name.
-        # make base segment
-        # make default preset in all scenes.
-        # make default preset for all scenes.
-        # active in what scenes?
-
-    def copy_channel(self, channel):
-        pass
-
-
-
-
-class Scene:
-    """A preset for a stage.
-        has a list of active channels and their scene presets
-        list of nonactive channels
-    channel_presets : dict { channel instance : channel_preset{} }
+     channel_presets : dict { channel instance : channel_preset{} }
         collection of scene channels and corresponding presets
-
     channel_preset : dict { volume : int,
                             balance : int,
                             is_random : bool,
@@ -176,26 +101,101 @@ class Scene:
                             }
         channel preset
 
-    """
+    channels : dict { channel_name : channel instance }
+        collection of channels.
+        channel behavior depends on the active scene
 
-    def __init__(self, name="new scene", playlist=None, channel_presets=None):
-        # shared channels - adjust volume, balance, but keep play position when swapping
-        # individual channels. starts from beginning
-        # playlist channels / stream. play,stop next, prev, repeat shuffle
-        #
+    active_scene : scene preset
+        scene from which stage segmenter get channel settings
 
-        if channel_presets:
-            # loaded scene
-            self.channel_presets = channel_presets
-            self.name = name
-        else:
-            #new sc ene
-            self.channel_presets = {}
+    new_actve_scene
 
-        self.playlist = playlist
+    stage_segmenter()
+        Yields 20ms of mixed audio from all active channels
 
-    def add_channel(self, channel):
-        self.channel_presets[channel] = self.defualt_preset()
+    ms, sec, min : int
+        Providing time mapping for scene generator.
+
+    Methods
+    -------
+
+        """
+
+    def __init__(self, channels, scenes, active_scene):
+
+        self.channels = channels
+        self.paused_channels = {}
+        self.scenes = scenes
+        self.active_scene = active_scene
+
+
+        self.ms = self.sec = self.min = self.hour = 0
+        self.segmenter = self.scene_generator()
+        self.scene_volume = 50
+        self.stage_playing = True
+
+    def pause_channel(self, channel):
+        self.paused_channels[channel] = self.channels.pop(channel)
+
+    def unpause_channel(self, channel):
+        self.channels[channel] = self.paused_channels.pop(channel)
+
+    def scene_generator(self):
+        """Generates 20ms worth of opus encoded raw bytes
+        Checks if scheduled segments, and sets to active when needed
+
+        Overlays all active segments
+        """
+
+        while True:
+            # time schedule
+            self.ms += 20
+            if self.ms >= 1000:
+                self.ms = 0
+                self.sec += 1
+                if self.sec >= 60:
+                    self.sec = 0
+                    self.min += 1
+                    # Resets depleted random channels  at corresponding 1 min, 10 min and 1 hour mark
+                    for channel in self.channels.values():
+                        if channel.depleted and channel.random_unit == 1:
+                            channel.depleted = False
+                        if self.min == 10 and channel.random_unit == 10:
+                            channel.depleted = False
+                    if self.min >= 60:
+                        for channel in self.channels.values():
+                            if channel.depleted and channel.random_unit == 3600:
+                                channel.depleted = False
+                        self.min = 0
+            #empty base
+            segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
+
+            #
+            if self.stage_playing:
+                for channel in self.channels.values():
+                    if not channel.is_active:
+                        if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
+                            print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
+                            channel.is_active = True
+                            channel.seg_gen = channel.segment_generator()
+                    if channel.is_active:
+                        try:
+                            segment = segment.overlay(next(channel.seg_gen))
+                        except StopIteration:
+                            print(channel.name, "finished playing")
+                            continue
+            yield segment
+
+
+    def change_scene(self, new_scene):
+        pass
+
+    def add_scene(self):
+        pass
+
+    def remove_scene(self):
+        pass
+
 
     def defualt_preset(self):
         preset = {"is_channel_active": False,
@@ -208,6 +208,8 @@ class Scene:
                   "crossfade_amount": 100
                   }
         return preset
+
+
 
 
 class Channel:
@@ -239,16 +241,22 @@ class Channel:
         range: -50 - 50
 
     is_muted : bool
+        volume = 0
+
+    is_active : bool
+        is being currently played.
+        Either between random plays or if paused.
 
     is_random : bool
         indicates channel is played at a random interval
         thus needs random_rate ratio amount / time_unit
         randomed channels cannot be crossfaded
 
-    random_ratio : dict {    amount : int
+    random_traits : dict {    amount : int
                            time_unit : int seconds
                                 amount / time_unit
                                 5 times over 10 minutes period
+
                            depleted : bool
                                 this indicates that channel has
                                 no more play events for current
@@ -279,7 +287,8 @@ class Channel:
 
     """
 
-    def __init__(self, name, audio_source, balance=0, volume=50, is_muted=False, is_crossfaded=False, is_random=False ):
+    def __init__(self, name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+                 is_crossfaded=False, is_random=False, is_active=False, is_global_distinct=False):
         self.name = name
         self.audio_source = audio_source
         self.balance = balance
@@ -288,35 +297,115 @@ class Channel:
                                               parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
             balance / 50).fade_in(50).fade_out(20)
 
+        self.is_active = is_active
+        self.is_random = is_random
+        self.random_unit = time_unit
+        self.random_count = random_amount
 
+        if self.is_random:
+            # TODO: What happens if next time is immediate
+            self.is_active = not is_random
+            # Make schedule generator
+            self.schedule = self.random_seg_scheduler()
+            self.next_play_time = next(self.schedule)
 
+        if is_crossfaded:
+            self.initial, self.crossfaded = self.crossfader()
 
-    def activate(self):
-        """Make scene segments, scheduels
-        check whats different than default
+        self.seg_gen = self.segment_generator()
+
+        self.is_global_distinct = is_global_distinct
+        self.is_muted = is_muted
+
+    def crossfader(self):
+        """Generate initial crossfaded segment and loopable crossfaded segment"""
+        # end crossfaded
+        initial = self.segment.append(self.segment[:300], crossfade=150)
+        initial = initial[:len(self.segment)].fade_in(20).fade_out(20)
+
+        # Start and end crossfaded
+        crossfaded = self.segment[-300:].append(initial, crossfade=150)
+        crossfaded = crossfaded[-len(self.segment):].fade_in(20).fade_out(20)
+        return initial[::20], crossfaded
+
+    def segment_generator(self):
+        """Generate 20 ms AudioSegments.
+        Checks wheter channel is continiously looping or is a random segment
+
+        Once a random segment is depleted its set to not active and
+        generator ends
         """
-        if self.is_active:
-            return
 
-        preset = self.active_scene.channel_presets(self)
+        if self.crossfade and not self.is_random:
+            slices = self.crossfaded[::20]
+            # initial loop
+            while True:
+                try:
+                    yield next(self.initial)
+                except StopIteration:
+                    break
+        else:
+            slices = self.segment[::20]
 
-        scene_segment = self.base_segment
-        if preset["balance"] != 0:
-            scene_segment = scene_segment.pan(self.active_scene.channel_presets(self)["balance"] / 50)
+        while True:
+            try:
+                yield next(slices)
+            except StopIteration:
+                if self.is_random:
+                    self.is_active = False
+                    self.next_play_time = next(self.schedule)
+                    return
+                else:
+                    if self.crossfade:
+                        slices = self.crossfaded[::20]
+                    else:
+                        slices = self.segment[::20]
+                    continue
 
-        if preset["is_random"]:
-            # check schedule, make scheduler
-            pass
-        if not preset["is_random"] and preset["is_crossfade"]:
-            # Make crossfaded segments
-            pass
+    def random_seg_scheduler(self):
+        """Generate infinite number random start times.
 
-        self.is_active = True
-        return scene_segment
+        Segments will not overlap, ie- next start time will be after current segment is finished playing.
+        Last segment will finish before next period starts
+        """
 
-    def segmenter(self):
+        segment_length = int(self.segment.duration_seconds * 1000)
+        period = self.random_unit * 1000
+        rate = self.random_count
 
-        pass
+        start_times = ((segment_length - 1000) * i + x for i, x in
+                       enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
+
+        while True:
+            try:
+                time = next(start_times) // 1000
+                yield time
+            except StopIteration:
+                print('Segment ', self.name, ' schedule depleted')
+
+                start_times = ((segment_length - 1000) * i + x for i, x in
+                               enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
+                self.depleted = True
+                continue
 
     def transition_segmenter(self):
+        pass
+
+
+class Playlist(Channel):
+    def __init__(self, name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+                 is_crossfaded=False, is_random=False, is_active=False, is_global_distinct=False):
+        super().__init__(name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+                         is_crossfaded=False, is_random=False, is_active=False, is_gloabl_distinct=False)
+
+        # dict { "name" : (pydub.AudioSegment, AudioSource) }
+        self.playlist = {}
+
+    def shuffle(self):
+        pass
+
+    def add_song(self, song):
+        pass
+
+    def remove_song(self, song):
         pass
