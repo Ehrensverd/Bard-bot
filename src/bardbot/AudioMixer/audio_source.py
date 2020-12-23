@@ -8,7 +8,7 @@ If AudioSource from url then its stored temporarily such it can be Saved later.
 """
 
 
-class BasicAudioSource:
+class AudioSource:
     """
         Basic audio source from url or file.
 
