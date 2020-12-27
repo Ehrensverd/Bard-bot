@@ -34,8 +34,10 @@ from bardbot.AudioMixer.audio_source import AudioSource
 # Utility
 from bardbot.AudioMixer.channels import Channel
 
+# File management
 
-def save_stage_as(stage, directory_path):
+
+def save_scenery_as(stage, directory_path):
     # if file_path exist confirm overwrite
     if path.exists(directory_path):
         print("stage  exists, overwrite")
@@ -45,14 +47,14 @@ def save_stage_as(stage, directory_path):
     # save channels to file
     for channel in stage.channels:
         channel.audio_source.save_as(directory_path
-                                     + stage.stage_name + channel.name + ".mp3", channel.segment)
+                                     + stage.scenery_name + channel.name + ".mp3", channel.segment)
 
     # save scene preset
-    with open(directory_path + stage.stage_name + "scenes.txt", 'wb') as f:
-        pickle.dump(stage.scenes, f, pickle.HIGHEST_PROTOCOL)
+    with open(directory_path + stage.scenery_name + "scenes.txt", 'wb') as f:
+        pickle.dump(stage.presets, f, pickle.HIGHEST_PROTOCOL)
 
 
-def load_stage(directory_path, active_scene):
+def load_scenery(directory_path, active_scene):
     # TODO remove from stage class, make utility.
     print("Loading stage from path:", directory_path)
     with open(directory_path + "scenes.txt", 'rb') as f:
@@ -65,12 +67,13 @@ def load_stage(directory_path, active_scene):
 
 # TODO: make possible to only import subset of channels
 def load_channels(directory_path, active_scene):
+    """
+    Returns dict { "channel_name" : channel_instance }
+
+
+     """
     return {channel_name: Channel(channel_name, AudioSource(file=directory_path + channel_name),
                                   **active_scene[channel_name]) for channel_name in os.listdir(directory_path)}
-
-
-def import_stage():
-    pass
 
 
 def import_scenery(url):
@@ -128,10 +131,10 @@ class Scenery:
 
     Attributes
     ----------
-    stage_volume : int
+    scenery_volume : int
         main volume for stage
 
-    scenes : dict { scene_name : scene_presets{}}
+    presets : dict { scene_name : scene_presets{}}
         collection of loaded scenes.
         each scene is a different preset for the stage.
      channel_presets : dict { channel_name : channel_preset{} }
@@ -152,7 +155,7 @@ class Scenery:
         collection of channels.
         channel behavior depends on the active scene
 
-    active_scene : scene preset
+    active_preset : scene preset
         scene from which stage segmenter get channel settings
 
     new_actve_scene
@@ -168,19 +171,19 @@ class Scenery:
 
         """
 
-    def __init__(self, stage_name, channels, scenes, active_scene):
-        self.stage_name = stage_name
+    def __init__(self, scenery_name, channels, presets, active_preset):
+        self.scenery_name = scenery_name
         self.channels = channels
         self.paused_channels = {}
-        self.scenes = scenes
-        self.active_scene = active_scene
-        self.changing_scene = False
-        self.new_scene = None
+        self.presets = presets
+        self.active_preset = active_preset
+        self.changing_preset = False
+        self.next_preset = None
 
         self.ms = self.sec = self.min = self.hour = 0
-        self.segmenter = self.scene_generator()
-        self.stage_volume = 50
-        self.stage_playing = True
+        self.segmenter = self.scenery_generator()
+        self.scenery_volume = 50
+        self.scenery_playing = True
 
     def pause_channel(self, channel):
         self.paused_channels[channel] = self.channels.pop(channel)
@@ -188,7 +191,7 @@ class Scenery:
     def unpause_channel(self, channel):
         self.channels[channel] = self.paused_channels.pop(channel)
 
-    def scene_generator(self):
+    def scenery_generator(self):
         """Generates 20ms worth of opus encoded raw bytes
         Checks if scheduled segments, and sets to active when needed
 
@@ -219,9 +222,9 @@ class Scenery:
             segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
             #
-            if self.stage_playing:
-                if self.changing_scene:
-                    self.scene_changer()
+            if self.scenery_playing:
+                if self.changing_preset:
+                    self.preset_changer()
                 for channel in self.channels.values():
                     # only active channels are yielded from
                     if not channel.is_active:
@@ -237,7 +240,7 @@ class Scenery:
                             continue
             yield segment
 
-    def scene_changer(self):
+    def preset_changer(self):
         """
         method called within stage generator
             shfiting values towards new scene
@@ -256,7 +259,7 @@ class Scenery:
         if not changed:
             # 3 when done, set old active to non active if non active in new.
             for channel in self.channels:
-                channel.__dict__.update(**self.new_scene[channel.name])
+                channel.__dict__.update(**self.next_preset[channel.name])
                 # channel.is_active = self.new_scene[channel.name]["is_active"]
                 # channel.volume = self.new_scene[channel.name]["volume"]
                 # channel.balance = self.new_scene[channel.name]["balance"]
@@ -267,31 +270,31 @@ class Scenery:
             # if not self.new_scene.channel.is_active and channel.is_active:
             #         channel.is_active = False
 
-            self.changing_scene = False
+            self.changing_preset = False
 
-    def change_scene(self, new_scene=None):
+    def change_preset(self, new_scene=None):
         """initial scene change method. sets"""
         # 1 find active scenes that are non active in current
         # make active and set volume = 0
         if new_scene:
-            self.new_scene = new_scene
+            self.next_preset = new_scene
         
-        for channel, preset in self.new_scene.items():
-            if (preset["is_active"]) and not self.active_scene[channel]["is_active"]:
+        for channel, preset in self.next_preset.items():
+            if (preset["is_active"]) and not self.active_preset[channel]["is_active"]:
                 preset["volume"] = 0
-                self.active_scene[channel]["is_active"] = True
+                self.active_preset[channel]["is_active"] = True
 
-        self.changing_scene = True
+        self.changing_preset = True
 
-    def add_scene(self, scene, scene_name):
+    def add_preset(self, scene, scene_name):
         # TODO: Assert scene is valid
 
-        if scene not in self.scenes:
-            self.scenes[scene_name] = scene
+        if scene not in self.presets:
+            self.presets[scene_name] = scene
 
-    def remove_scene(self, scene_name):
-        if scene_name in self.scenes:
-            self.scenes[scene_name].remove(scene_name)
+    def remove_preset(self, scene_name):
+        if scene_name in self.presets:
+            self.presets[scene_name].remove(scene_name)
 
     def defualt_preset(self):
         preset = {"is_active": False,
