@@ -18,6 +18,7 @@ on scene change channel collections are updated.
 
 """
 import io
+import os
 import pickle
 import random
 from os import path
@@ -30,17 +31,49 @@ from pydub import AudioSegment
 
 from bardbot.AudioMixer.audio_source import AudioSource
 
-
-
 # Utility
 from bardbot.AudioMixer.channels import Channel
 
 
-def load_stage_scene(self, file_path):
-    pass
+def save_stage_as(stage, directory_path):
+    # if file_path exist confirm overwrite
+    if path.exists(directory_path):
+        print("stage  exists, overwrite")
+        # qt dialog
+        return
+
+    # save channels to file
+    for channel in stage.channels:
+        channel.audio_source.save_as(directory_path
+                                     + stage.stage_name + channel.name + ".mp3", channel.segment)
+
+    # save scene preset
+    with open(directory_path + stage.stage_name + "scenes.txt", 'wb') as f:
+        pickle.dump(stage.scenes, f, pickle.HIGHEST_PROTOCOL)
+
+
+def load_stage(directory_path, active_scene):
+    # TODO remove from stage class, make utility.
+    print("Loading stage from path:", directory_path)
+    with open(directory_path + "scenes.txt", 'rb') as f:
+        scenes = pickle.load(f)
+
+    stage_name = os.path.basename(os.path.normpath(directory_path))
+    print("Stage name:", stage_name)
+    return Scenery(stage_name, load_channels(directory_path + "/channels/", scenes[active_scene]), scenes, active_scene)
+
 
 # TODO: make possible to only import subset of channels
-def import_stage(self, url):
+def load_channels(directory_path, active_scene):
+    return {channel_name: Channel(channel_name, AudioSource(file=directory_path + channel_name),
+                                  **active_scene[channel_name]) for channel_name in os.listdir(directory_path)}
+
+
+def import_stage():
+    pass
+
+
+def import_scenery(url):
     """Parse channels from XML file
 
     Returns a dicitionary {channel# : channel instance }
@@ -80,7 +113,17 @@ def import_stage(self, url):
     return channels
 
 
-class Stage:
+def align_presets(channel, new_channel_preset, preset):
+    changed = False
+    if channel[preset] < new_channel_preset[preset]:
+        channel[preset] += 1
+        changed = True
+    elif channel[preset] > new_channel_preset[preset]:
+        new_channel_preset[preset] -= 1
+        changed = True
+    return changed
+
+class Scenery:
     """Base audio template for soundscapes
 
     Attributes
@@ -91,7 +134,7 @@ class Stage:
     scenes : dict { scene_name : scene_presets{}}
         collection of loaded scenes.
         each scene is a different preset for the stage.
-     channel_presets : dict { channel instance : channel_preset{} }
+     channel_presets : dict { channel_name : channel_preset{} }
         collection of scene channels and corresponding presets
     channel_preset : dict { volume : int,
                             balance : int,
@@ -125,17 +168,18 @@ class Stage:
 
         """
 
-    def __init__(self, channels, scenes, active_scene):
-
+    def __init__(self, stage_name, channels, scenes, active_scene):
+        self.stage_name = stage_name
         self.channels = channels
         self.paused_channels = {}
         self.scenes = scenes
         self.active_scene = active_scene
-
+        self.changing_scene = False
+        self.new_scene = None
 
         self.ms = self.sec = self.min = self.hour = 0
         self.segmenter = self.scene_generator()
-        self.scene_volume = 50
+        self.stage_volume = 50
         self.stage_playing = True
 
     def pause_channel(self, channel):
@@ -171,12 +215,15 @@ class Stage:
                             if channel.depleted and channel.random_unit == 3600:
                                 channel.depleted = False
                         self.min = 0
-            #empty base
+            # empty base
             segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
             #
             if self.stage_playing:
+                if self.changing_scene:
+                    self.scene_changer()
                 for channel in self.channels.values():
+                    # only active channels are yielded from
                     if not channel.is_active:
                         if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
                             print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
@@ -190,24 +237,51 @@ class Stage:
                             continue
             yield segment
 
-    def change_scene(self, new_scene):
-        pass
+    def scene_changer(self):
+        """
+        method called within stage generator
+            shfiting values towards new scene
+        """
 
-    def save_scene(self, scene):
-        # TODO: channel needs altered flag
-        pass
-
-    def save_scene_as(self, scene, directory_path):
-        # if file_path exist confirm overwrite
-        if path.exists(directory_path):
-            print("scene  exists, overwrite")
-            # qt dialog
+        # 2 start shifting towards new values
+        # if active in old and nonactive in new -> 0
+        # else shift til matches new value
+        changed = False
+        # activated scenes
         for channel in self.channels:
-            channel.audio_source.save_as("/home/eskil/PycharmProjects/Bard-bot/src/bardbot/temp_files/" + scene["name"] + "/" + channel.name, channel.segment)
-        "/home/eskil/PycharmProjects/Bard-bot/src/bardbot/temp_files/" + scene["name"] + "/"
+            # if (preset["volume"]) == self.active_scene[channel]["volume"]:
+            #     self.active_scene[channel]["volume"] -= (self.active_scene[channel]["volume"] - preset["volume"])/abs( self.active_scene[channel]["volume"] - preset["volume"])
+            changed = align_presets(channel,"volume" ) or align_presets(channel, "balance")
 
-        with open(scene["name"] + ".txt", 'wb') as f:
-            pickle.dump(scene, f, pickle.HIGHEST_PROTOCOL)
+        if not changed:
+            # 3 when done, set old active to non active if non active in new.
+            for channel in self.channels:
+                channel.__dict__.update(**self.new_scene[channel.name])
+                # channel.is_active = self.new_scene[channel.name]["is_active"]
+                # channel.volume = self.new_scene[channel.name]["volume"]
+                # channel.balance = self.new_scene[channel.name]["balance"]
+                # channel.random_unit = self.new_scene[channel.name][""]
+                # channel. = self.new_scene[channel.name][""]
+                # channel. = self.new_scene[channel.name][""]
+                # channel. = self.new_scene[channel.name][""]
+            # if not self.new_scene.channel.is_active and channel.is_active:
+            #         channel.is_active = False
+
+            self.changing_scene = False
+
+    def change_scene(self, new_scene=None):
+        """initial scene change method. sets"""
+        # 1 find active scenes that are non active in current
+        # make active and set volume = 0
+        if new_scene:
+            self.new_scene = new_scene
+        
+        for channel, preset in self.new_scene.items():
+            if (preset["is_active"]) and not self.active_scene[channel]["is_active"]:
+                preset["volume"] = 0
+                self.active_scene[channel]["is_active"] = True
+
+        self.changing_scene = True
 
     def add_scene(self, scene, scene_name):
         # TODO: Assert scene is valid
@@ -215,22 +289,18 @@ class Stage:
         if scene not in self.scenes:
             self.scenes[scene_name] = scene
 
-
-    def remove_scene(self):
-        pass
-
+    def remove_scene(self, scene_name):
+        if scene_name in self.scenes:
+            self.scenes[scene_name].remove(scene_name)
 
     def defualt_preset(self):
-        preset = {"is_channel_active": False,
+        preset = {"is_active": False,
                   "volume": 50,
                   "balance": 0,
                   "is_random": False,
-                  "random_rate": 0,
-                  "random_unit": 1,
-                  "is_crossfade": False,
-                  "crossfade_amount": 100
+                  "random_amount": 0,
+                  "random_time_unit": 1,
+                  "is_crossfaded": False,
+
                   }
         return preset
-
-
-
