@@ -54,7 +54,7 @@ class Bard(discord.AudioSource):
     def add_source(self, source: As):
         self.source = source
         self.deque = deque(maxlen=self.size)
-        self.deque.append(next(self.source.gen))
+        self.deque.append(next(self.source.segmenter))
 
     def add_new_source(self, source: As):
         self.new_source = source
@@ -232,13 +232,13 @@ async def pause_music(ctx):
 @bot.command()
 async def resume_scene(ctx):
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.scene_playing = True
+    voice.source.source.scenery_playing = True
 
 
 @bot.command()
 async def pause_scene(ctx):
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.scene_playing = False
+    voice.source.source.scenery_playing = False
 
 # load_opus_lib()
 

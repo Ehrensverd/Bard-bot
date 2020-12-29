@@ -79,8 +79,9 @@ class Channel:
 
     """
 
-    def __init__(self, name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+    def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
                  is_crossfaded=False, is_random=False, is_active=False, is_global_distinct=False):
+        # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
         self.name = name
         self.audio_source = audio_source
         self.balance = balance
@@ -91,8 +92,8 @@ class Channel:
 
         self.is_active = is_active
         self.is_random = is_random
-        self.random_unit = time_unit
-        self.random_count = random_amount
+        self.random_time_unit = random_time_unit
+        self.random_amount = random_amount
 
         if self.is_random:
             # TODO: What happens if next time is immediate

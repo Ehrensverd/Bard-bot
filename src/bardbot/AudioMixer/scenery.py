@@ -37,43 +37,43 @@ from bardbot.AudioMixer.channels import Channel
 # File management
 
 
-def save_scenery_as(stage, directory_path):
+def save_scenery_as(scenery, directory_path):
     # if file_path exist confirm overwrite
     if path.exists(directory_path):
-        print("stage  exists, overwrite")
+        print("scenery  exists, overwrite")
         # qt dialog
         return
 
     # save channels to file
-    for channel in stage.channels:
+    for channel in scenery.channels:
         channel.audio_source.save_as(directory_path
-                                     + stage.scenery_name + channel.name + ".mp3", channel.segment)
+                                     + scenery.scenery_name + channel.name + ".mp3", channel.segment)
 
     # save scene preset
-    with open(directory_path + stage.scenery_name + "scenes.txt", 'wb') as f:
-        pickle.dump(stage.presets, f, pickle.HIGHEST_PROTOCOL)
+    with open(directory_path + scenery.scenery_name + "presets.txt", 'wb') as f:
+        pickle.dump(scenery.presets, f, pickle.HIGHEST_PROTOCOL)
 
 
-def load_scenery(directory_path, active_scene):
+def load_scenery(directory_path, active_preset):
     # TODO remove from stage class, make utility.
     print("Loading stage from path:", directory_path)
-    with open(directory_path + "scenes.txt", 'rb') as f:
+    with open(directory_path + "presets.txt", 'rb') as f:
         scenes = pickle.load(f)
 
     stage_name = os.path.basename(os.path.normpath(directory_path))
-    print("Stage name:", stage_name)
-    return Scenery(stage_name, load_channels(directory_path + "/channels/", scenes[active_scene]), scenes, active_scene)
+    print("Scenery name:", stage_name)
+    return Scenery(stage_name, load_channels(directory_path + "/channels/", scenes[active_preset]), scenes, active_preset)
 
 
 # TODO: make possible to only import subset of channels
-def load_channels(directory_path, active_scene):
+def load_channels(directory_path, active_preset):
     """
     Returns dict { "channel_name" : channel_instance }
 
 
      """
     return {channel_name: Channel(channel_name, AudioSource(file=directory_path + channel_name),
-                                  **active_scene[channel_name]) for channel_name in os.listdir(directory_path)}
+                                  **active_preset[channel_name]) for channel_name in os.listdir(directory_path)}
 
 
 def import_scenery(url):
@@ -272,12 +272,12 @@ class Scenery:
 
             self.changing_preset = False
 
-    def change_preset(self, new_scene=None):
+    def change_preset(self, next_preset=None):
         """initial scene change method. sets"""
         # 1 find active scenes that are non active in current
         # make active and set volume = 0
-        if new_scene:
-            self.next_preset = new_scene
+        if next_preset:
+            self.next_preset = next_preset
         
         for channel, preset in self.next_preset.items():
             if (preset["is_active"]) and not self.active_preset[channel]["is_active"]:
@@ -286,15 +286,15 @@ class Scenery:
 
         self.changing_preset = True
 
-    def add_preset(self, scene, scene_name):
+    def add_preset(self, preset, preset_name):
         # TODO: Assert scene is valid
 
-        if scene not in self.presets:
-            self.presets[scene_name] = scene
+        if preset not in self.presets:
+            self.presets[preset_name] = preset
 
-    def remove_preset(self, scene_name):
-        if scene_name in self.presets:
-            self.presets[scene_name].remove(scene_name)
+    def remove_preset(self, preset_name):
+        if preset_name in self.presets:
+            self.presets[preset_name].remove(preset_name)
 
     def defualt_preset(self):
         preset = {"is_active": False,

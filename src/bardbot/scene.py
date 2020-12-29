@@ -42,7 +42,7 @@ class Scene:
         self.ms = self.sec = self.min = self.hour = 0
         self.segmenter = self.scene_generator()
         self.scene_volume = 50
-
+        self.scene_playing = True
 
     def pause_channel(self, channel):
         self.paused_channels[channel] = self.channels.pop(channel)
@@ -69,7 +69,7 @@ class Scene:
                     for channel in self.channels.values():
                         if channel.depleted and channel.random_unit == 1:
                             channel.depleted = False
-                        if min == 10 and channel.random_unit == 10:
+                        if self.min == 10 and channel.random_unit == 10:
                             channel.depleted = False
                     if self.min >= 60:
                         for channel in self.channels.values():
