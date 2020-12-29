@@ -1,19 +1,15 @@
-import json
 import string
 
 from pydub.playback import play
-from bardbot.scene import Scene
+from bardbot.Misc.scene import Scene
 
 import io
 
 from pydub import AudioSegment
-import requests
 
 # /html/body/div[4]/div/div[2]/div[4]/div[1]/div/div[2]/section[1]/div[4]/section/ol/div[4]/div/li/div[2]/div/div[1]
 # https://open.spotify.com/playlist/0IyMP3izyM2jbYgJLydB00
 url = "https://open.spotify.com/playlist/0bWUBjlr7O4troJKyyMVbD"
-from bs4 import BeautifulSoup
-from urllib.request import urlopen
 
 import requests, re, json
 

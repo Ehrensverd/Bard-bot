@@ -1,10 +1,8 @@
 from collections import deque
 from contextlib import suppress
-import io
 import os
 
-from bardbot.premade_presets import scenes
-from bringbuf.bringbuf import bRingBuf
+from bardbot.Misc.premade_presets import scenes
 from dotenv import load_dotenv
 import discord
 from discord import opus
@@ -12,7 +10,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 from pydub import AudioSegment as As
 
-from .scene import Scene
+from bardbot.Misc.scene import Scene
 
 load_dotenv()
 BOT_TOKEN = os.getenv('TOKEN')
