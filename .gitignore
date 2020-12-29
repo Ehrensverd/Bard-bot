@@ -110,11 +110,12 @@ ENV/
 src/rcp/_pkg_info.py
 
 # Legacy stuff
-src/bardbot/importer.py
-src/bardbot/premade_presets.py
-src/bardbot/scene.py
-src/bardbot/test_misc.py
-src/bardbot/playlists.txt
+src/bardbot/Misc/importer.py
+src/bardbot/Misc/premade_presets.py
+src/bardbot/Misc/scene.py
+src/bardbot/Misc/test_misc.py
+src/bardbot/Misc/playlists.txt
 src/bardbot/temp_files
-src/bardbot/channel.py
+src/bardbot/Misc/channel.py
 
+/src/bardbot/Misc/
