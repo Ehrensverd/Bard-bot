@@ -1,7 +1,15 @@
+import threading
+from asyncio import get_event_loop
 from collections import deque
 from contextlib import suppress
 import os
+from multiprocessing.context import Process
 
+from bardbot import GUI
+from bardbot.AudioMixer import main_mixer
+from bardbot.AudioMixer.main_mixer import MainMixer, Monitor
+from bardbot.AudioMixer.scene import Scene
+from bardbot.GUI.gui import init_ui
 from bardbot.Misc.premade_presets import scenes
 from dotenv import load_dotenv
 import discord
@@ -87,7 +95,7 @@ class Bard(discord.AudioSource):
         print("Stopping deque filling")
         self.fill.stop()
 
-bard = Bard()
+
 
 
 @bot.command()
@@ -230,15 +238,56 @@ async def pause_music(ctx):
 @bot.command()
 async def resume_scene(ctx):
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.scenery_playing = True
+    voice.source.source.scene_playing = True
 
 
 @bot.command()
 async def pause_scene(ctx):
     voice = get(bot.voice_clients, guild=ctx.guild)
-    voice.source.source.scenery_playing = False
+    voice.source.source.scene_playing = False
 
 # load_opus_lib()
 
+# check config file
+# set discord and monitor true false
+discord_playback = False
+monitor_playback = True
+
+
+
 def main():
-    bot.run(BOT_TOKEN)
+
+    # Start machinery
+    main_mix = MainMixer()
+
+
+
+    # Setup playback
+    if discord_playback:
+        async def bot_final_start():
+            await bot.start(BOT_TOKEN)
+
+        def bot_loop_start(event_loop):
+            event_loop.run_forever()
+
+        loop = get_event_loop()
+        loop.create_task(bot_final_start())
+        bot_thread = threading.Thread(target=bot_loop_start, args=(loop,))
+        bot_thread.start()
+
+        playback = Bard(main_mixer)
+
+        # old start call: bot.run(BOT_TOKEN)
+
+    if monitor_playback and not discord_playback:
+        playback = Monitor(main_mixer)
+        # Setup controller / businiss logic
+    controller = Controller(main_mix, playback)
+
+    # Setup business logic- called by gui
+    # Load Gui
+    # ui_thread = threading.Thread(target=init_ui, args=(controller,))
+    # ui_thread.start()
+    GUI.gui.init_ui(controller)
+
+    print("discord actually done")

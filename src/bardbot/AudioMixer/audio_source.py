@@ -1,3 +1,5 @@
+import io
+
 from pydub import utils, AudioSegment
 import requests
 import shutil
@@ -59,3 +61,4 @@ class AudioSource:
 
     def save(self, audio_segment):
         audio_segment.export(self.file_path, format="mp3")
+

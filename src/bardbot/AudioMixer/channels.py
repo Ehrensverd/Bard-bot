@@ -35,7 +35,7 @@ class Channel:
     is_muted : bool
         volume = 0
 
-    is_active : bool
+    is_playing : bool
         is being currently played.
         Either between random plays or if paused.
 
@@ -55,7 +55,7 @@ class Channel:
                                 time unit iteration and therefore waits
                             }
 
-    is_crossfaded : bool
+    is_looped : bool
         activates crossfader()
         adds a smooth volume curve to start and end of segment
         that also contains overlayed audio from opposite end.
@@ -80,35 +80,53 @@ class Channel:
     """
 
     def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
-                 is_crossfaded=False, is_random=False, is_active=False, is_global_distinct=False):
+                 is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
         # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
         self.name = name
         self.audio_source = audio_source
-        self.balance = balance
         self.volume = volume
+        self.balance = balance
+        self.is_muted = is_muted
+        # TODO check if vol needs to be set vol 0 if muted, here or if scene generator handels
         self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3', frame_rate=48000,
                                               parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
             balance / 50).fade_in(50).fade_out(20)
 
-        self.is_active = is_active
+        self.is_playing = is_playing
         self.is_random = is_random
         self.random_time_unit = random_time_unit
         self.random_amount = random_amount
 
         if self.is_random:
             # TODO: What happens if next time is immediate
-            self.is_active = not is_random
+            self.is_playing = not is_random
             # Make schedule generator
             self.schedule = self.random_seg_scheduler()
             self.next_play_time = next(self.schedule)
 
-        if is_crossfaded:
+        self.is_looped = is_looped
+
+        if self.is_looped:
             self.initial, self.crossfaded_segment = self.crossfader()
 
-        self.seg_gen = self.segment_generator()
-
         self.is_global_distinct = is_global_distinct
-        self.is_muted = is_muted
+        self.seg_gen = self.segment_generator()
+        # Might ber redundant, but might be useful for changed channels
+        self.preset_fields = self.channel_fields()
+
+    def channel_fields(self):
+        fields = {"channel_name": self.name,
+                  "volume": self.volume,
+                  "balance": self.balance,
+                  "is_muted": self.is_muted,
+                  "is_playing": self.is_playing,
+                  "is_random": self.is_random,
+                  "random_time_unit": self.random_time_unit,
+                  "random_amount": self.random_amount,
+                  "is_looped": self.is_looped,
+                  "is_global_distinct": self.is_global_distinct
+                  }
+        return fields
 
     def crossfader(self):
         """Generate initial crossfaded segment and loopable crossfaded segment"""
@@ -128,7 +146,7 @@ class Channel:
         Once a random segment is depleted its set to not active and
         generator ends
         """
-
+        # initial segmenting
         if self.crossfaded_segment and not self.is_random:
             slices = self.crossfaded_segment[::20]
             # initial loop
@@ -145,7 +163,7 @@ class Channel:
                 yield next(slices)
             except StopIteration:
                 if self.is_random:
-                    self.is_active = False
+                    self.is_playing = False
                     self.next_play_time = next(self.schedule)
                     return
                 else:
@@ -187,10 +205,11 @@ class Channel:
 
 class Playlist(Channel):
     """A channel that can have multiple audio files control """
+
     def __init__(self, name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
-                 is_crossfaded=False, is_random=False, is_active=False, is_global_distinct=False):
+                 is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
         super().__init__(name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
-                         is_crossfaded=False, is_random=False, is_active=False, is_gloabl_distinct=False)
+                         is_looped=False, is_random=False, is_playing=False, is_gloabl_distinct=False)
 
         # dict { "name" : (pydub.AudioSegment, AudioSource) }
         self.playlist = {}

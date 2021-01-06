@@ -24,6 +24,7 @@ import random
 from os import path
 from urllib.request import urlopen
 from xml.etree import ElementTree
+import concurrent.futures
 
 import requests
 from bs4 import BeautifulSoup
@@ -34,35 +35,36 @@ from bardbot.AudioMixer.audio_source import AudioSource
 # Utility
 from bardbot.AudioMixer.channels import Channel
 
+
 # File management
 
 
-def save_scenery_as(scenery, directory_path):
+def save_scene_as(scene, directory_path):
     # if file_path exist confirm overwrite
     if path.exists(directory_path):
-        print("scenery  exists, overwrite")
+        print("scene  exists, overwrite")
         # qt dialog
         return
 
     # save channels to file
-    for channel in scenery.channels:
+    for channel in scene.channels:
         channel.audio_source.save_as(directory_path
-                                     + scenery.scenery_name + channel.name + ".mp3", channel.segment)
+                                     + scene.scene_name + channel.name + ".mp3", channel.segment)
 
     # save scene preset
-    with open(directory_path + scenery.scenery_name + "presets.txt", 'wb') as f:
-        pickle.dump(scenery.presets, f, pickle.HIGHEST_PROTOCOL)
+    with open(directory_path + scene.scene_name + "presets.txt", 'wb') as f:
+        pickle.dump(scene.presets, f, pickle.HIGHEST_PROTOCOL)
 
 
-def load_scenery(directory_path, active_preset):
+def load_scene(directory_path, active_preset):
     # TODO remove from stage class, make utility.
-    print("Loading stage from path:", directory_path)
+    print("Loading scene from path:", directory_path)
     with open(directory_path + "presets.txt", 'rb') as f:
         scenes = pickle.load(f)
 
-    stage_name = os.path.basename(os.path.normpath(directory_path))
-    print("Scenery name:", stage_name)
-    return Scenery(stage_name, load_channels(directory_path + "/channels/", scenes[active_preset]), scenes, active_preset)
+    scene_name = os.path.basename(os.path.normpath(directory_path))
+    print("Scene name:", scene_name)
+    return Scene(scene_name, load_channels(directory_path + "/channels/", scenes[active_preset]), scenes, active_preset)
 
 
 # TODO: make possible to only import subset of channels
@@ -76,7 +78,7 @@ def load_channels(directory_path, active_preset):
                                   **active_preset[channel_name]) for channel_name in os.listdir(directory_path)}
 
 
-def import_scenery(url):
+def import_scene(url):
     """Parse channels from XML file
 
     Returns a dicitionary {channel# : channel instance }
@@ -91,11 +93,12 @@ def import_scenery(url):
     url = urlopen(url)
     channels = {}
     num = 1
-    for item in ElementTree.parse(url).iter():
+
+    def import_channel(item):
 
         if item.tag.startswith('channel'):
             if item.findtext('id_audio') == '0':
-                continue
+                return None
             else:
                 audio_id = int(item.findtext('id_audio'))
                 audio_name = item.findtext('name_audio')
@@ -110,10 +113,21 @@ def import_scenery(url):
                 audio_source = AudioSource(url=mp3_url)
 
                 # TODO: check if is_active can be deactivated in ambient-mixer while not random, and if it creates issues.
-                channels['channel' + str(num)] = Channel(audio_name, audio_source, random_counter, random_unit, balance,
-                                                         volume, mute, cross_fade, is_random, not is_random)
+                return ('channel' + str(num), Channel(audio_name, audio_source, random_counter, random_unit, balance,
+                                                      volume, mute, cross_fade, is_random, not is_random))
 
-    return channels
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        channels = executor.map(import_channel, ElementTree.parse(url).iter())
+
+    scene_name = url.rsplit('/', 1)[-1]
+    preset = make_scene_preset(channels)
+    return scene_name, channels, preset, preset
+
+
+def make_scene_preset(channels):
+    """ """
+    # TODO Rename channel.preset to channel.fields or channel.values
+    return {channel.name: channel.preset for channel in channels}
 
 
 def align_presets(channel, new_channel_preset, preset):
@@ -126,15 +140,16 @@ def align_presets(channel, new_channel_preset, preset):
         changed = True
     return changed
 
-class Scenery:
+
+class Scene:
     """Base audio template for soundscapes
 
     Attributes
     ----------
-    scenery_volume : int
+    scene_volume : int
         main volume for stage
 
-    presets : dict { scene_name : scene_presets{}}
+    presets : dict { preset_name : channel_presets{}}
         collection of loaded scenes.
         each scene is a different preset for the stage.
      channel_presets : dict { channel_name : channel_preset{} }
@@ -171,19 +186,24 @@ class Scenery:
 
         """
 
-    def __init__(self, scenery_name, channels, presets, active_preset):
-        self.scenery_name = scenery_name
+    def __init__(self, scene_name, channels, presets, active_preset):
+        self.scene_name = scene_name
         self.channels = channels
         self.paused_channels = {}
-        self.presets = presets
+
+        if presets is None:
+            self.presets = self.default_presets()
+        else:
+            self.presets = presets
+
         self.active_preset = active_preset
         self.changing_preset = False
         self.next_preset = None
 
         self.ms = self.sec = self.min = self.hour = 0
-        self.segmenter = self.scenery_generator()
-        self.scenery_volume = 50
-        self.scenery_playing = True
+        self.segmenter = self.scene_generator()
+        self.scene_volume = 50
+        self.scene_playing = True
 
     def pause_channel(self, channel):
         self.paused_channels[channel] = self.channels.pop(channel)
@@ -191,7 +211,7 @@ class Scenery:
     def unpause_channel(self, channel):
         self.channels[channel] = self.paused_channels.pop(channel)
 
-    def scenery_generator(self):
+    def scene_generator(self):
         """Generates 20ms worth of opus encoded raw bytes
         Checks if scheduled segments, and sets to active when needed
 
@@ -222,17 +242,17 @@ class Scenery:
             segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
             #
-            if self.scenery_playing:
+            if self.scene_playing:
                 if self.changing_preset:
                     self.preset_changer()
                 for channel in self.channels.values():
                     # only active channels are yielded from
-                    if not channel.is_active:
+                    if not channel.is_playing:
                         if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
                             print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
-                            channel.is_active = True
+                            channel.is_playing = True
                             channel.seg_gen = channel.segment_generator()
-                    if channel.is_active:
+                    if channel.is_playing:
                         try:
                             segment = segment.overlay(next(channel.seg_gen))
                         except StopIteration:
@@ -254,7 +274,7 @@ class Scenery:
         for channel in self.channels:
             # if (preset["volume"]) == self.active_scene[channel]["volume"]:
             #     self.active_scene[channel]["volume"] -= (self.active_scene[channel]["volume"] - preset["volume"])/abs( self.active_scene[channel]["volume"] - preset["volume"])
-            changed = align_presets(channel,"volume" ) or align_presets(channel, "balance")
+            changed = align_presets(channel, "volume") or align_presets(channel, "balance")
 
         if not changed:
             # 3 when done, set old active to non active if non active in new.
@@ -278,7 +298,7 @@ class Scenery:
         # make active and set volume = 0
         if next_preset:
             self.next_preset = next_preset
-        
+
         for channel, preset in self.next_preset.items():
             if (preset["is_active"]) and not self.active_preset[channel]["is_active"]:
                 preset["volume"] = 0
@@ -296,14 +316,10 @@ class Scenery:
         if preset_name in self.presets:
             self.presets[preset_name].remove(preset_name)
 
-    def defualt_preset(self):
-        preset = {"is_active": False,
-                  "volume": 50,
-                  "balance": 0,
-                  "is_random": False,
-                  "random_amount": 0,
-                  "random_time_unit": 1,
-                  "is_crossfaded": False,
+    def default_presets(self):
+        presets = {"default_preset": self.get_channel_presets()}
+        return presets
 
-                  }
-        return preset
+    def get_channel_presets(self):
+        channel_presets = {channel.name: channel.preset_fields() for channel in self.channels}
+        return channel_presets
