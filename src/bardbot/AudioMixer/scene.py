@@ -22,6 +22,7 @@ import os
 import pickle
 import random
 from os import path
+from pprint import pprint
 from urllib.request import urlopen
 from xml.etree import ElementTree
 import concurrent.futures
@@ -187,6 +188,7 @@ class Scene:
         """
 
     def __init__(self, scene_name, channels, presets, active_preset):
+
         self.scene_name = scene_name
         self.channels = channels
         self.paused_channels = {}
@@ -201,6 +203,7 @@ class Scene:
         self.next_preset = None
 
         self.ms = self.sec = self.min = self.hour = 0
+
         self.segmenter = self.scene_generator()
         self.scene_volume = 50
         self.scene_playing = True
@@ -228,14 +231,14 @@ class Scene:
                     self.sec = 0
                     self.min += 1
                     # Resets depleted random channels  at corresponding 1 min, 10 min and 1 hour mark
-                    for channel in self.channels.values():
-                        if channel.depleted and channel.random_unit == 1:
+                    for channel in self.channels:
+                        if channel.depleted and channel.random_time_unit == 1:
                             channel.depleted = False
-                        if self.min == 10 and channel.random_unit == 10:
+                        if self.min == 10 and channel.random_time__unit == 10:
                             channel.depleted = False
                     if self.min >= 60:
-                        for channel in self.channels.values():
-                            if channel.depleted and channel.random_unit == 3600:
+                        for channel in self.channels:
+                            if channel.depleted and channel.random_time__unit == 3600:
                                 channel.depleted = False
                         self.min = 0
             # empty base
@@ -245,7 +248,8 @@ class Scene:
             if self.scene_playing:
                 if self.changing_preset:
                     self.preset_changer()
-                for channel in self.channels.values():
+
+                for channel in self.channels:
                     # only active channels are yielded from
                     if not channel.is_playing:
                         if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:

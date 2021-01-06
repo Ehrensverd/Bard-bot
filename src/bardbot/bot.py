@@ -1,3 +1,4 @@
+import sys
 import threading
 from asyncio import get_event_loop
 from collections import deque
@@ -9,6 +10,7 @@ from bardbot import GUI
 from bardbot.AudioMixer import main_mixer
 from bardbot.AudioMixer.main_mixer import MainMixer, Monitor
 from bardbot.AudioMixer.scene import Scene
+from bardbot.Controller.controller import Controller
 from bardbot.GUI.gui import init_ui
 from bardbot.Misc.premade_presets import scenes
 from dotenv import load_dotenv
@@ -262,6 +264,7 @@ def main():
 
 
 
+    playback = None
     # Setup playback
     if discord_playback:
         async def bot_final_start():
@@ -275,13 +278,14 @@ def main():
         bot_thread = threading.Thread(target=bot_loop_start, args=(loop,))
         bot_thread.start()
 
-        playback = Bard(main_mixer)
+        playback = Bard(main_mix)
 
         # old start call: bot.run(BOT_TOKEN)
 
     if monitor_playback and not discord_playback:
-        playback = Monitor(main_mixer)
+        playback = Monitor(main_mix)
         # Setup controller / businiss logic
+
     controller = Controller(main_mix, playback)
 
     # Setup business logic- called by gui

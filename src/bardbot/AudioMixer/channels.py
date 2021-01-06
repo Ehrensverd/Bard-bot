@@ -1,5 +1,6 @@
 import io
 import random
+import time
 
 from pydub import AudioSegment
 
@@ -82,19 +83,30 @@ class Channel:
     def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
                  is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
         # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
+        print("problems 1")
+        time.sleep(2)
         self.name = name
         self.audio_source = audio_source
         self.volume = volume
         self.balance = balance
         self.is_muted = is_muted
         # TODO check if vol needs to be set vol 0 if muted, here or if scene generator handels
+        time.sleep(2)
+        print("problems 2")
         self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3', frame_rate=48000,
                                               parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
             balance / 50).fade_in(50).fade_out(20)
+        time.sleep(2)
+        print("problems 3")
 
         self.is_playing = is_playing
         self.is_random = is_random
-        self.random_time_unit = random_time_unit
+        if random_time_unit[-1] in 'h':
+            self.random_time_unit = 3600
+        else:
+            self.random_time_unit = (int(random_time_unit[:-1]) * 60)
+
+
         self.random_amount = random_amount
 
         if self.is_random:
@@ -103,9 +115,12 @@ class Channel:
             # Make schedule generator
             self.schedule = self.random_seg_scheduler()
             self.next_play_time = next(self.schedule)
+        else:
+            self.is_playing = True
+
 
         self.is_looped = is_looped
-
+        self.depleted = False
         if self.is_looped:
             self.initial, self.crossfaded_segment = self.crossfader()
 
@@ -113,6 +128,8 @@ class Channel:
         self.seg_gen = self.segment_generator()
         # Might ber redundant, but might be useful for changed channels
         self.preset_fields = self.channel_fields()
+        print("problems 4")
+        time.sleep(1)
 
     def channel_fields(self):
         fields = {"channel_name": self.name,
@@ -147,7 +164,7 @@ class Channel:
         generator ends
         """
         # initial segmenting
-        if self.crossfaded_segment and not self.is_random:
+        if self.is_looped and not self.is_random:
             slices = self.crossfaded_segment[::20]
             # initial loop
             while True:
@@ -167,7 +184,7 @@ class Channel:
                     self.next_play_time = next(self.schedule)
                     return
                 else:
-                    if self.crossfaded_segment:
+                    if self.is_looped:
                         slices = self.crossfaded_segment[::20]
                     else:
                         slices = self.segment[::20]
@@ -181,8 +198,8 @@ class Channel:
         """
 
         segment_length = int(self.segment.duration_seconds * 1000)
-        period = self.random_unit * 1000
-        rate = self.random_count
+        period = self.random_time_unit * 1000
+        rate = self.random_amount
 
         start_times = ((segment_length - 1000) * i + x for i, x in
                        enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))

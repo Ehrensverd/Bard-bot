@@ -87,11 +87,14 @@ class MDIWindow(QMainWindow):
             text, ok = QInputDialog.getText(self, 'Text Input Dialog', "Import from url")
 
             if ok:
+                imported_scene = self.controller.import_scene(text)
+                imported_scene.scene_playing = True
+                self.controller.add_scene(imported_scene)
                 print(text)
-                mdi = MDIWindow()
-                MDIWindow.count = MDIWindow.count + 1
-                sub = QMdiSubWindow()
-                play_button = QPushButton("P")
+
+                self.controller.main_mix.playing = True
+
+
 
                 # sub.setWindowTitle("Sub Window" + str(MDIWindow.count))
                 # sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint )
@@ -101,10 +104,7 @@ class MDIWindow(QMainWindow):
                 # sub.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
                 # sub.setStyleSheet('background-color: grey; border: 3px solid black')
 
-                sub.setFixedSize(200, 100)
-                mdi.mdi_area.addSubWindow(sub)
-                mdi.show()
-                sub.show()
+
 
         if p.text() == "Open":
             scene_gui = Ui_scene_widget()
