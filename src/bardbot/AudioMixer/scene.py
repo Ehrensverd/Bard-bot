@@ -30,6 +30,7 @@ import concurrent.futures
 import requests
 from bs4 import BeautifulSoup
 from pydub import AudioSegment
+from pydub.utils import ratio_to_db
 
 from bardbot.AudioMixer.audio_source import AudioSource
 
@@ -78,57 +79,6 @@ def load_channels(directory_path, active_preset):
     return {channel_name: Channel(channel_name, AudioSource(file=directory_path + channel_name),
                                   **active_preset[channel_name]) for channel_name in os.listdir(directory_path)}
 
-
-def import_scene(url):
-    """Parse channels from XML file
-
-    Returns a dicitionary {channel# : channel instance }
-
-    """
-    page = requests.get(url)
-    soup = BeautifulSoup(page.content, 'html.parser')
-
-    temnplate_id = soup.select_one("a[href*=vote]")['href'].rpartition('/')[2]
-    url = 'https://xml.ambient-mixer.com/audio-template?player=html5&id_template=' + str(temnplate_id)
-
-    url = urlopen(url)
-    channels = {}
-    num = 1
-
-    def import_channel(item):
-
-        if item.tag.startswith('channel'):
-            if item.findtext('id_audio') == '0':
-                return None
-            else:
-                audio_id = int(item.findtext('id_audio'))
-                audio_name = item.findtext('name_audio')
-                mp3_url = item.findtext('url_audio')
-                mute = (item.findtext('mute') == 'true')
-                volume = int(item.findtext('volume'))
-                balance = int(item.findtext('balance'))
-                is_random = (item.findtext('random') == 'true')
-                random_counter = int(item.findtext('random_counter'))
-                random_unit = item.findtext('random_unit')
-                cross_fade = (item.findtext('crossfade') == 'true')
-                audio_source = AudioSource(url=mp3_url)
-
-                # TODO: check if is_active can be deactivated in ambient-mixer while not random, and if it creates issues.
-                return ('channel' + str(num), Channel(audio_name, audio_source, random_counter, random_unit, balance,
-                                                      volume, mute, cross_fade, is_random, not is_random))
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        channels = executor.map(import_channel, ElementTree.parse(url).iter())
-
-    scene_name = url.rsplit('/', 1)[-1]
-    preset = make_scene_preset(channels)
-    return scene_name, channels, preset, preset
-
-
-def make_scene_preset(channels):
-    """ """
-    # TODO Rename channel.preset to channel.fields or channel.values
-    return {channel.name: channel.preset for channel in channels}
 
 
 def align_presets(channel, new_channel_preset, preset):
@@ -206,7 +156,9 @@ class Scene:
 
         self.segmenter = self.scene_generator()
         self.scene_volume = 50
+        self.scene_balance = 0
         self.scene_playing = True
+        self.low_pass = False
 
     def pause_channel(self, channel):
         self.paused_channels[channel] = self.channels.pop(channel)
@@ -262,7 +214,8 @@ class Scene:
                         except StopIteration:
                             print(channel.name, "finished playing")
                             continue
-            yield segment
+
+            yield segment.apply_gain(ratio_to_db(self.scene_volume / 25)).pan(self.scene_balance / 100)
 
     def preset_changer(self):
         """
