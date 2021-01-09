@@ -83,21 +83,50 @@ class Channel:
     def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
                  is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
         # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
-        print("problems 1")
-        time.sleep(2)
+
         self.name = name
         self.audio_source = audio_source
         self.volume = volume
         self.balance = balance
         self.is_muted = is_muted
         # TODO check if vol needs to be set vol 0 if muted, here or if scene generator handels
-        time.sleep(2)
-        print("problems 2")
+
         self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3', frame_rate=48000,
-                                              parameters=["-vol", str(volume)]).set_frame_rate(48000).pan(
-            balance / 50).fade_in(50).fade_out(20)
-        time.sleep(2)
-        print("problems 3")
+                                              parameters=["-vol", str(volume+6)])
+        self.fade_in_amount = 60
+        self.fade_out_amount = self.fade_in_amount
+        print(self.name, "\nDuration:", self.segment.duration_seconds)
+        print()
+
+        if self.segment.duration_seconds > 4:
+            sliced_chunks = self.segment[::4001]
+            self.segment = None #AudioSegment.empty()
+            current_chunk = next(sliced_chunks, None)
+            print(self.name, "\nDuration:", current_chunk.duration_seconds)
+            while True:
+
+                next_chunk = next(sliced_chunks, None)
+                if not self.segment:
+                    # First chunk
+                    print(self.name, "\nFirst Duration:", current_chunk.duration_seconds)
+                    self.segment = current_chunk.set_frame_rate(48000).pan(
+                        balance / 50).fade_in(self.fade_in_amount)
+                elif next_chunk:
+                    print(self.name, "\n betweenDuration:", current_chunk.duration_seconds)
+                    # In between
+                    self.segment += current_chunk.set_frame_rate(48000).pan(
+                        balance / 50)
+                else:
+                    # Last
+                    print(self.name, "\n Last Duration:", current_chunk.duration_seconds)
+                    self.segment += current_chunk.set_frame_rate(48000).pan(
+                        balance / 50).fade_out(self.fade_out_amount)
+                    break
+                current_chunk = next_chunk
+
+        else:
+
+            self.segment.set_frame_rate(48000).pan(balance / 50).fade_in(50).fade_out(20)
 
         self.is_playing = is_playing
         self.is_random = is_random
@@ -105,7 +134,6 @@ class Channel:
             self.random_time_unit = 3600
         else:
             self.random_time_unit = (int(random_time_unit[:-1]) * 60)
-
 
         self.random_amount = random_amount
 
@@ -118,7 +146,6 @@ class Channel:
         else:
             self.is_playing = True
 
-
         self.is_looped = is_looped
         self.depleted = False
         if self.is_looped:
@@ -128,8 +155,6 @@ class Channel:
         self.seg_gen = self.segment_generator()
         # Might ber redundant, but might be useful for changed channels
         self.preset_fields = self.channel_fields()
-        print("problems 4")
-        time.sleep(1)
 
     def channel_fields(self):
         fields = {"channel_name": self.name,
