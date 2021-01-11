@@ -1,4 +1,5 @@
 import io
+import pathlib
 
 from pydub import utils, AudioSegment
 import requests
@@ -23,7 +24,7 @@ class AudioSource:
 
     """
 
-    def __init__(self, url=None, file=None):
+    def __init__(self, url=None, file=None, name="audio file"):
 
         # TODO: Assert filetype and do conversion if needed.
         # MP3 only
@@ -43,7 +44,7 @@ class AudioSource:
 
             # Save to temp location
             self.mp3 = requests.get(url).content
-            self.file_path = "/home/eskil/PycharmProjects/Bard-bot/src/bardbot/temp_files/" + url.rsplit('/', 1)[-1]
+            self.file_path = str(pathlib.Path(__file__).parent.parent.absolute()) + "/temp_files/" + name
             with open(self.file_path, 'wb') as f:
                 f.write(self.mp3)
         # TODO: Send mp3 to garbage collector if not needed
