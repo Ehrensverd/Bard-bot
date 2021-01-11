@@ -61,16 +61,18 @@ class MainMixer:
 
 
 class Monitor:
-    def __init__(self, main_mix=None, size=50):
+
+    def __init__(self, main_mix=None, size=4):
 
         self.main_mix = main_mix
         self.source = main_mix.main_segmenter
         self.size = size
         self.deque = deque(maxlen=self.size)
-        self.silent_segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
+        self.silent_segment_read = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
+        self.silent_segment_fill = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
         self.x = threading.Thread(target=self.fill)
-
+        time.sleep(0.3)
         self.y = threading.Thread(target=self.read)
         self.x.start()
         time.sleep(0.5)
@@ -95,17 +97,17 @@ class Monitor:
                     self.deque.appendleft(next(self.source))
 
                 except StopIteration:
-                    self.deque.appendleft(self.silent_segment)
+                    self.deque.appendleft(self.silent_segment_fill)
 
 
 
             else:
-                time.sleep(0.01)
+                time.sleep(0.005)
                 pass
 
             if not self.deque:
                 print("fill done?")
-                return
+
 
     def read(self):
         if self.source is None:
@@ -114,16 +116,21 @@ class Monitor:
 
         p = pyaudio.PyAudio()
 
-        stream = p.open(format=p.get_format_from_width(self.silent_segment.sample_width),
-                        frames_per_buffer=int(self.silent_segment.frame_count()),
-                        channels=self.silent_segment.channels,
-                        rate=self.silent_segment.frame_rate,
+        stream = p.open(format=p.get_format_from_width(self.silent_segment_fill.sample_width),
+                        frames_per_buffer=int(self.silent_segment_fill.frame_count()),
+                        channels=self.silent_segment_fill.channels,
+                        rate=self.silent_segment_fill.frame_rate,
                         output=True)
 
         while True:
+
             if len(self.deque) == 0:
                 print("empty queu")
-                data = self.silent_segment
+                try:
+
+                    data = next(self.main_mix.main_segmenter)
+                except StopIteration:
+                    data = self.silent_segment_read
             else:
                 data = self.deque.pop()
             #next(self.source)
