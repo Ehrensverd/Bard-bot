@@ -183,13 +183,13 @@ class Scene:
                     self.sec = 0
                     self.min += 1
                     # Resets depleted random channels  at corresponding 1 min, 10 min and 1 hour mark
-                    for channel in self.channels:
+                    for channel in self.channels.values():
                         if channel.depleted and channel.random_time_unit == 1:
                             channel.depleted = False
                         if self.min == 10 and channel.random_time__unit == 10:
                             channel.depleted = False
                     if self.min >= 60:
-                        for channel in self.channels:
+                        for channel in self.channels.values():
                             if channel.depleted and channel.random_time__unit == 3600:
                                 channel.depleted = False
                         self.min = 0
@@ -201,21 +201,36 @@ class Scene:
                 if self.changing_preset:
                     self.preset_changer()
 
-                for channel in self.channels:
+                for channel in self.channels.values():
                     # only active channels are yielded from
-                    if not channel.is_playing:
+                    if not channel.is_playing and channel.is_random:
+                        # Check if its time to start playing random segments
                         if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
                             print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
                             channel.is_playing = True
                             channel.seg_gen = channel.segment_generator()
                     if channel.is_playing:
                         try:
-                            segment = segment.overlay(next(channel.seg_gen))
+                            channel_segment = next(channel.seg_gen).apply_gain(ratio_to_db(channel.volume / 25))
+                            segment = segment.overlay(channel_segment.pan(self.balance_panning(channel.balance)))
                         except StopIteration:
                             print(channel.name, "finished playing")
                             continue
 
-            yield segment.apply_gain(ratio_to_db(self.scene_volume / 25)).pan(self.scene_balance / 100)
+            yield segment.apply_gain(ratio_to_db(self.scene_volume / 25))
+
+    def balance_panning(self, channel_balance):
+        # Scale range for channel balance, based on
+        # scene balance
+
+        channel_min_range = (50 - self.scene_balance) * -2 if self.scene_balance > 0 else -100
+        channel_max_range = (50 + self.scene_balance) * 2 if self.scene_balance < 0 else 100
+
+        # def rescale(val, in_min, in_max, out_min, out_max):
+        #     return out_min + (val - in_min) * ((out_max - out_min) / (in_max - in_min))
+        pan = channel_min_range + (channel_balance - -100) * ((channel_max_range - channel_min_range) / (100 - -100))
+
+        return int(pan) / 100
 
     def preset_changer(self):
         """
@@ -228,14 +243,14 @@ class Scene:
         # else shift til matches new value
         changed = False
         # activated scenes
-        for channel in self.channels:
+        for channel in self.channels.values():
             # if (preset["volume"]) == self.active_scene[channel]["volume"]:
             #     self.active_scene[channel]["volume"] -= (self.active_scene[channel]["volume"] - preset["volume"])/abs( self.active_scene[channel]["volume"] - preset["volume"])
             changed = align_presets(channel, "volume") or align_presets(channel, "balance")
 
         if not changed:
             # 3 when done, set old active to non active if non active in new.
-            for channel in self.channels:
+            for channel in self.channels.values():
                 channel.__dict__.update(**self.next_preset[channel.name])
                 # channel.is_active = self.new_scene[channel.name]["is_active"]
                 # channel.volume = self.new_scene[channel.name]["volume"]

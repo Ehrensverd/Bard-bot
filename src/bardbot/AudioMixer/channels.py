@@ -98,8 +98,8 @@ class Channel:
         print(self.name, "\nDuration:", self.segment.duration_seconds)
         print()
 
-        if self.segment.duration_seconds > 4:
-            sliced_chunks = self.segment[::4001]
+        if self.segment.duration_seconds > 15:
+            sliced_chunks = self.segment[::15001]
             self.segment = None #AudioSegment.empty()
             current_chunk = next(sliced_chunks, None)
             print(self.name, "\nDuration:", current_chunk.duration_seconds)
@@ -109,24 +109,21 @@ class Channel:
                 if not self.segment:
                     # First chunk
                     print(self.name, "\nFirst Duration:", current_chunk.duration_seconds)
-                    self.segment = current_chunk.set_frame_rate(48000).pan(
-                        balance / 50).fade_in(self.fade_in_amount)
+                    self.segment = current_chunk.set_frame_rate(48000).fade_in(self.fade_in_amount)
                 elif next_chunk:
                     print(self.name, "\n betweenDuration:", current_chunk.duration_seconds)
                     # In between
-                    self.segment += current_chunk.set_frame_rate(48000).pan(
-                        balance / 50)
+                    self.segment += current_chunk.set_frame_rate(48000)
                 else:
                     # Last
                     print(self.name, "\n Last Duration:", current_chunk.duration_seconds)
-                    self.segment += current_chunk.set_frame_rate(48000).pan(
-                        balance / 50).fade_out(self.fade_out_amount)
+                    self.segment += current_chunk.set_frame_rate(48000).fade_out(self.fade_out_amount)
                     break
                 current_chunk = next_chunk
 
         else:
 
-            self.segment.set_frame_rate(48000).pan(balance / 50).fade_in(50).fade_out(20)
+            self.segment.set_frame_rate(48000).fade_in(self.fade_in_amount).fade_out(self.fade_out_amount)
 
         self.is_playing = is_playing
         self.is_random = is_random
@@ -146,8 +143,9 @@ class Channel:
         else:
             self.is_playing = True
 
-        self.is_looped = is_looped
         self.depleted = False
+        self.is_triggered = False
+        self.is_looped = is_looped
         if self.is_looped:
             self.initial, self.crossfaded_segment = self.crossfader()
 
@@ -206,12 +204,16 @@ class Channel:
             except StopIteration:
                 if self.is_random:
                     self.is_playing = False
-                    self.next_play_time = next(self.schedule)
+
+                    if not self.is_triggered:
+                        self.next_play_time = next(self.schedule)
                     return
                 else:
+                    self.is_triggered = False
                     if self.is_looped:
                         slices = self.crossfaded_segment[::20]
                     else:
+
                         slices = self.segment[::20]
                     continue
 
