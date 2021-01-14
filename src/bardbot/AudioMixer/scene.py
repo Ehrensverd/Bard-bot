@@ -183,6 +183,9 @@ class Scene:
                     self.sec = 0
                     self.min += 1
                     # Resets depleted random channels  at corresponding 1 min, 10 min and 1 hour mark
+                    # This prevents a ratio of x times per 10 minutes, in cases where the last
+                    # of the x plays ends before the 10 minute mark, to start a new x times per 10 min
+                    # before the original 10 minutes have passed.
                     for channel in self.channels.values():
                         if channel.depleted and channel.random_time_unit == 1:
                             channel.depleted = False

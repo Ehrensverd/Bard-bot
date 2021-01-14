@@ -95,7 +95,7 @@ class Channel:
                                               parameters=["-vol", str(volume+6)])
         self.fade_in_amount = 60
         self.fade_out_amount = self.fade_in_amount
-        self.scene_clock_offset = 0
+        self.pause_offset = 0
         self.space = space
         self.loops = loops
         print(self.name, "\nDuration:", self.segment.duration_seconds)
@@ -221,24 +221,26 @@ class Channel:
                     continue
 
 
-    def loop_scheduler(self):
-        loop_duration = len(self.segment + self.space)
-        looped = 0
-        if self.loops == "infinite":
-            while True:
-                self.next_play_time = loop_duration + self.next_play_time
-                yield self.next_play_time + self.scene_clock_offset
-        else:
-            while looped < self.loops:
-                self.next_play_time = loop_duration + self.next_play_time
-                looped += 1
-                yield self.next_play_time + self.scene_clock_offset
+    def loop_scheduler(self, scene_time_offset=0):
+        loop_duration = len(self.segment) + self.space
+        remaining_loops = self.loops
+        self.next_play_time = scene_time_offset
+        # if infinite remaining_loops =  float("inf")
+        while remaining_loops > 0:
 
-        test = "sdfgs"
+            self.next_play_time = loop_duration + self.next_play_time
+            remaining_loops -= 1
+            time = self.next_play_time + self.pause_offset
+
+            # No more loops
+            if remaining_loops == 0:
+                self.next_play_time = float("inf")
+            yield time
 
 
 
-    def random_seg_scheduler(self):
+
+    def random_seg_scheduler(self, scene_time_offset=0):
         """Generate infinite number random start times.
 
         Segments will not overlap, ie- next start time will be after current segment is finished playing.
@@ -255,7 +257,7 @@ class Channel:
         while True:
             try:
                 time = next(start_times) // 1000
-                yield time + self.scene_clock_offset
+                yield time + self.pause_offset
             except StopIteration:
                 print('Segment ', self.name, ' schedule depleted')
 
