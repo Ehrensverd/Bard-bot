@@ -92,7 +92,7 @@ class Channel:
         # TODO check if vol needs to be set vol 0 if muted, here or if scene generator handels
 
         self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3', frame_rate=48000,
-                                              parameters=["-vol", str(volume+6)])
+                                              parameters=["-vol", str(volume + 6)])
         self.fade_in_amount = 60
         self.fade_out_amount = self.fade_in_amount
         self.pause_offset = 0
@@ -103,7 +103,7 @@ class Channel:
 
         if self.segment.duration_seconds > 15:
             sliced_chunks = self.segment[::15001]
-            self.segment = None #AudioSegment.empty()
+            self.segment = None  # AudioSegment.empty()
             current_chunk = next(sliced_chunks, None)
             print(self.name, "\nDuration:", current_chunk.duration_seconds)
             while True:
@@ -111,15 +111,15 @@ class Channel:
                 next_chunk = next(sliced_chunks, None)
                 if not self.segment:
                     # First chunk
-                    print(self.name, "\nFirst Duration:", current_chunk.duration_seconds)
+                    # print(self.name, "\nFirst Duration:", current_chunk.duration_seconds)
                     self.segment = current_chunk.set_frame_rate(48000).fade_in(self.fade_in_amount)
                 elif next_chunk:
-                    print(self.name, "\n betweenDuration:", current_chunk.duration_seconds)
+                    # print(self.name, "\n betweenDuration:", current_chunk.duration_seconds)
                     # In between
                     self.segment += current_chunk.set_frame_rate(48000)
                 else:
                     # Last
-                    print(self.name, "\n Last Duration:", current_chunk.duration_seconds)
+                    # print(self.name, "\n Last Duration:", current_chunk.duration_seconds)
                     self.segment += current_chunk.set_frame_rate(48000).fade_out(self.fade_out_amount)
                     break
                 current_chunk = next_chunk
@@ -146,7 +146,6 @@ class Channel:
         else:
             self.is_playing = True
 
-        self.depleted = False
         self.is_triggered = False
         self.is_looped = is_looped
         if self.is_looped:
@@ -189,56 +188,44 @@ class Channel:
         Once a random segment is depleted its set to not active and
         generator ends
         """
-        # initial segmenting
-        if self.is_looped and not self.is_random:
-            slices = self.crossfaded_segment[::20]
-            # initial loop
-            while True:
-                try:
-                    yield next(self.initial)
-                except StopIteration:
-                    break
+        if self.is_looped:
+            schedule = self.loop_scheduler()
+            if self.space < 0:
+                yield from self.initial
         else:
-            slices = self.segment[::20]
+            schedule = self.random_seg_scheduler()
 
         while True:
-            try:
-                yield next(slices)
-            except StopIteration:
-                if self.is_random:
-                    self.is_playing = False
+            if self.is_looped and self.space < 0:
+                slices = self.crossfaded_segment[::20]
+            else:
+                slices = self.segment[::20]
+            # TODO :  if triggered right before next then get new time
+            if not self.is_triggered:
+                self.next_play_time = next(schedule)
+            else:
+                self.is_triggered = False
+            yield from slices
 
-                    if not self.is_triggered:
-                        self.next_play_time = next(self.schedule)
-                    return
-                else:
-                    self.is_triggered = False
-                    if self.is_looped:
-                        slices = self.crossfaded_segment[::20]
-                    else:
 
-                        slices = self.segment[::20]
-                    continue
 
 
     def loop_scheduler(self, scene_time_offset=0):
-        loop_duration = len(self.segment) + self.space
+        # initial loop setup
+        loop_duration = self.segment.duration_seconds + self.space
         remaining_loops = self.loops
+        self.pause_offset = 0
         self.next_play_time = scene_time_offset
-        # if infinite remaining_loops =  float("inf")
-        while remaining_loops > 0:
+        remaining_loops -= 1
+        yield self.next_play_time
 
+        while remaining_loops > 0:
             self.next_play_time = loop_duration + self.next_play_time
             remaining_loops -= 1
-            time = self.next_play_time + self.pause_offset
+            yield self.next_play_time + self.pause_offset
 
-            # No more loops
-            if remaining_loops == 0:
-                self.next_play_time = float("inf")
-            yield time
-
-
-
+        if remaining_loops == 0:
+            self.next_play_time = float("inf")
 
     def random_seg_scheduler(self, scene_time_offset=0):
         """Generate infinite number random start times.
@@ -246,25 +233,23 @@ class Channel:
         Segments will not overlap, ie- next start time will be after current segment is finished playing.
         Last segment will finish before next period starts
         """
-
+        iterations = 0
         segment_length = int(self.segment.duration_seconds * 1000)
-        period = self.random_time_unit * 1000
-        rate = self.random_amount
-
-        start_times = ((segment_length - 1000) * i + x for i, x in
-                       enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
+        time_period = self.random_time_unit * 1000
 
         while True:
-            try:
-                time = next(start_times) // 1000
-                yield time + self.pause_offset
-            except StopIteration:
-                print('Segment ', self.name, ' schedule depleted')
-
-                start_times = ((segment_length - 1000) * i + x for i, x in
-                               enumerate(sorted(random.sample(range(period - (segment_length - 1000) * rate), rate))))
-                self.depleted = True
-                continue
+            # Generate randomly spaced play times
+            regulated_intervals = enumerate(
+                sorted(random.sample(range(time_period - segment_length * self.random_amount), self.random_amount)))
+            start_times = (segment_length * playtime + interval for playtime, interval in regulated_intervals)
+            while True:
+                try:
+                    next_play_time = next(start_times) / 1000
+                    yield next_play_time + (iterations * self.random_time_unit) + scene_time_offset + self.pause_offset
+                except StopIteration:
+                    print('Segment ', self.name, ' schedule depleted')
+                    break
+            iterations += 1
 
     def transition_segmenter(self):
         pass

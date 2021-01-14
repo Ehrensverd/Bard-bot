@@ -80,7 +80,6 @@ def load_channels(directory_path, active_preset):
                                   **active_preset[channel_name]) for channel_name in os.listdir(directory_path)}
 
 
-
 def align_presets(channel, new_channel_preset, preset):
     changed = False
     if channel[preset] < new_channel_preset[preset]:
@@ -167,12 +166,9 @@ class Scene:
         self.channels[channel] = self.paused_channels.pop(channel)
 
     def scene_generator(self):
-        """Generates 20ms worth of opus encoded raw bytes
-        Checks if scheduled segments, and sets to active when needed
+        """Generates 20ms worth of opus encoded raw bytes and yields to main_mixer
 
-        Overlays all active segments
         """
-
         while True:
             # time schedule
             self.ms += 20
@@ -182,42 +178,25 @@ class Scene:
                 if self.sec >= 60:
                     self.sec = 0
                     self.min += 1
-                    # Resets depleted random channels  at corresponding 1 min, 10 min and 1 hour mark
-                    # This prevents a ratio of x times per 10 minutes, in cases where the last
-                    # of the x plays ends before the 10 minute mark, to start a new x times per 10 min
-                    # before the original 10 minutes have passed.
-                    for channel in self.channels.values():
-                        if channel.depleted and channel.random_time_unit == 1:
-                            channel.depleted = False
-                        if self.min == 10 and channel.random_time__unit == 10:
-                            channel.depleted = False
                     if self.min >= 60:
-                        for channel in self.channels.values():
-                            if channel.depleted and channel.random_time__unit == 3600:
-                                channel.depleted = False
                         self.min = 0
             # empty base
             segment = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
 
-            #
             if self.scene_playing:
                 if self.changing_preset:
                     self.preset_changer()
-
                 for channel in self.channels.values():
-                    # only active channels are yielded from
-                    if not channel.is_playing and channel.is_random:
-                        # Check if its time to start playing random segments
-                        if channel.next_play_time <= self.sec + (self.min * 60) and not channel.depleted:
-                            print(channel.name, "now playing. Time:", self.sec + (self.min * 60))
-                            channel.is_playing = True
-                            channel.seg_gen = channel.segment_generator()
-                    if channel.is_playing:
+
+                    if channel.paused:
+                        channel.pause_offset += 20
+
+                    elif channel.next_play_time <= self.sec + (self.min * 60) or channel.is_triggered:
                         try:
                             channel_segment = next(channel.seg_gen).apply_gain(ratio_to_db(channel.volume / 25))
                             segment = segment.overlay(channel_segment.pan(self.balance_panning(channel.balance)))
                         except StopIteration:
-                            print(channel.name, "finished playing")
+                            print(channel.name, "error yielding")  # consider reinitializing here if issues
                             continue
 
             yield segment.apply_gain(ratio_to_db(self.scene_volume / 25))
