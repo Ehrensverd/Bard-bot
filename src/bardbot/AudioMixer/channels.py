@@ -81,7 +81,7 @@ class Channel:
     """
 
     def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
-                 is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
+                 is_looped=False, is_random=False, is_playing=False, is_global_distinct=False, space=0, loops=0):
         # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
 
         self.name = name
@@ -95,6 +95,9 @@ class Channel:
                                               parameters=["-vol", str(volume+6)])
         self.fade_in_amount = 60
         self.fade_out_amount = self.fade_in_amount
+        self.scene_clock_offset = 0
+        self.space = space
+        self.loops = loops
         print(self.name, "\nDuration:", self.segment.duration_seconds)
         print()
 
@@ -217,6 +220,24 @@ class Channel:
                         slices = self.segment[::20]
                     continue
 
+
+    def loop_scheduler(self):
+        loop_duration = len(self.segment + self.space)
+        looped = 0
+        if self.loops == "infinite":
+            while True:
+                self.next_play_time = loop_duration + self.next_play_time
+                yield self.next_play_time + self.scene_clock_offset
+        else:
+            while looped < self.loops:
+                self.next_play_time = loop_duration + self.next_play_time
+                looped += 1
+                yield self.next_play_time + self.scene_clock_offset
+
+        test = "sdfgs"
+
+
+
     def random_seg_scheduler(self):
         """Generate infinite number random start times.
 
@@ -234,7 +255,7 @@ class Channel:
         while True:
             try:
                 time = next(start_times) // 1000
-                yield time
+                yield time + self.scene_clock_offset
             except StopIteration:
                 print('Segment ', self.name, ' schedule depleted')
 
