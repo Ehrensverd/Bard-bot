@@ -96,7 +96,7 @@ class Channel:
         self.fade_in_amount = 60
         self.fade_out_amount = self.fade_in_amount
         self.pause_offset = 0
-        self.space = space
+        self.separation_space = space
         self.loops = loops
         print(self.name, "\nDuration:", self.segment.duration_seconds)
         print()
@@ -190,17 +190,17 @@ class Channel:
         """
         if self.is_looped:
             schedule = self.loop_scheduler()
-            if self.space < 0:
+            if self.separation_space < 0:
                 yield from self.initial
         else:
             schedule = self.random_seg_scheduler()
 
         while True:
-            if self.is_looped and self.space < 0:
+            if self.is_looped and self.separation_space < 0:
                 slices = self.crossfaded_segment[::20]
             else:
                 slices = self.segment[::20]
-            # TODO :  if triggered right before next then get new time
+
             if not self.is_triggered:
                 self.next_play_time = next(schedule)
             else:
@@ -212,7 +212,7 @@ class Channel:
 
     def loop_scheduler(self, scene_time_offset=0):
         # initial loop setup
-        loop_duration = self.segment.duration_seconds + self.space
+        loop_duration = self.segment.duration_seconds + self.separation_space
         remaining_loops = self.loops
         self.pause_offset = 0
         self.next_play_time = scene_time_offset
