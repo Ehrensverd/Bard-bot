@@ -14,9 +14,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_scene_widget(object):
     def setupUi(self, scene_widget):
         scene_widget.setObjectName("scene_widget")
-        scene_widget.resize(902, 181)
+        scene_widget.resize(930, 291)
         self.preset_tabs = QtWidgets.QTabWidget(scene_widget)
-        self.preset_tabs.setGeometry(QtCore.QRect(111, -2, 791, 200))
+        self.preset_tabs.setGeometry(QtCore.QRect(111, -2, 1101, 240))
         self.preset_tabs.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.preset_tabs.setObjectName("preset_tabs")
         self.scene_frame = QtWidgets.QFrame(scene_widget)

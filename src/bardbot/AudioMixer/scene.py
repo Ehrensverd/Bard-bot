@@ -136,7 +136,7 @@ class Scene:
 
         """
 
-    def __init__(self, scene_name, channels, presets, active_preset):
+    def __init__(self, scene_name, channels, presets=None, active_preset=None):
 
         self.scene_name = scene_name
         self.channels = channels
@@ -155,7 +155,7 @@ class Scene:
 
         self.segmenter = self.scene_generator()
         self.scene_volume = 50
-        self.scene_balance = 0
+        self.balance = 0
         self.scene_playing = True
         self.low_pass = False
 
@@ -186,13 +186,14 @@ class Scene:
             if self.scene_playing:
                 if self.changing_preset:
                     self.preset_changer()
-                for channel in self.channels.values():
+                for channel in self.channels:
 
-                    if channel.paused:
+                    if channel.is_paused:
                         channel.pause_offset += 20
 
-                    elif channel.next_play_time <= self.sec + (self.min * 60) or channel.is_triggered:
+                    elif channel.is_triggered or channel.next_play_time <= self.sec + (self.min * 60):
                         try:
+
                             channel_segment = next(channel.seg_gen).apply_gain(ratio_to_db(channel.volume / 25))
                             segment = segment.overlay(channel_segment.pan(self.balance_panning(channel.balance)))
                         except StopIteration:
@@ -202,14 +203,13 @@ class Scene:
             yield segment.apply_gain(ratio_to_db(self.scene_volume / 25))
 
     def balance_panning(self, channel_balance):
-        # Scale range for channel balance, based on
-        # scene balance
-
-        channel_min_range = (50 - self.scene_balance) * -2 if self.scene_balance > 0 else -100
-        channel_max_range = (50 + self.scene_balance) * 2 if self.scene_balance < 0 else 100
+        # Scale channel range, based on scene balance
+        channel_min_range = (50 - self.balance) * -2 if self.balance > 0 else -100
+        channel_max_range = (50 + self.balance) * 2 if self.balance < 0 else 100
 
         # def rescale(val, in_min, in_max, out_min, out_max):
         #     return out_min + (val - in_min) * ((out_max - out_min) / (in_max - in_min))
+        # Apply rescaling, keep relative channel balance and calculate final pan value
         pan = channel_min_range + (channel_balance - -100) * ((channel_max_range - channel_min_range) / (100 - -100))
 
         return int(pan) / 100

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>385</width>
+    <height>125</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QPushButton" name="join_button">
+    <property name="geometry">
+     <rect>
+      <x>258</x>
+      <y>68</y>
+      <width>124</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Join</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="channel_id_lineedit">
+    <property name="geometry">
+     <rect>
+      <x>4</x>
+      <y>68</y>
+      <width>251</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Enter discord ID here</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="open_button">
+    <property name="geometry">
+     <rect>
+      <x>130</x>
+      <y>9</y>
+      <width>125</width>
+      <height>46</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>0</width>
+      <height>46</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>16777215</width>
+      <height>46</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>Open</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="new_scene_button">
+    <property name="geometry">
+     <rect>
+      <x>3</x>
+      <y>9</y>
+      <width>124</width>
+      <height>46</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>0</width>
+      <height>46</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>New Scene</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="import_button">
+    <property name="geometry">
+     <rect>
+      <x>258</x>
+      <y>9</y>
+      <width>124</width>
+      <height>46</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>0</width>
+      <height>46</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>16777215</width>
+      <height>46</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>Import</string>
+    </property>
+   </widget>
+   <widget class="Line" name="line">
+    <property name="geometry">
+     <rect>
+      <x>-1</x>
+      <y>0</y>
+      <width>396</width>
+      <height>3</height>
+     </rect>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>385</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuNew">
+     <property name="title">
+      <string>New Session</string>
+     </property>
+     <addaction name="actionSession"/>
+     <addaction name="actionCollection"/>
+     <addaction name="actionScene"/>
+     <addaction name="actionSoundboard"/>
+    </widget>
+    <widget class="QMenu" name="menuImport">
+     <property name="title">
+      <string>Import Session</string>
+     </property>
+     <addaction name="separator"/>
+     <addaction name="actionAmbient_URL"/>
+     <addaction name="actionBardbot"/>
+     <addaction name="actionBardbot_file"/>
+    </widget>
+    <addaction name="menuNew"/>
+    <addaction name="actionOpen"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSave_As"/>
+    <addaction name="menuImport"/>
+    <addaction name="actionExport"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="actionDisord"/>
+    <addaction name="actionTheme"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionConnecting_Discord"/>
+    <addaction name="actionAbout"/>
+    <addaction name="actionCopyright"/>
+    <addaction name="actionReport_Bug"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuSettings"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <action name="actionSession">
+   <property name="text">
+    <string>Session</string>
+   </property>
+  </action>
+  <action name="actionCollection">
+   <property name="text">
+    <string>Collection</string>
+   </property>
+  </action>
+  <action name="actionScene">
+   <property name="text">
+    <string>Scene</string>
+   </property>
+  </action>
+  <action name="actionSoundboard">
+   <property name="text">
+    <string>Soundboard</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open Session</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save Session</string>
+   </property>
+  </action>
+  <action name="actionSave_As">
+   <property name="text">
+    <string>Save Session As</string>
+   </property>
+  </action>
+  <action name="actionAmbient_URL">
+   <property name="text">
+    <string>Ambient URL</string>
+   </property>
+  </action>
+  <action name="actionBardbot">
+   <property name="text">
+    <string>Bardbot string</string>
+   </property>
+  </action>
+  <action name="actionBardbot_file">
+   <property name="text">
+    <string>Bardbot file</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string> Export Session</string>
+   </property>
+  </action>
+  <action name="actionDisord">
+   <property name="text">
+    <string>Setup Discord</string>
+   </property>
+  </action>
+  <action name="actionConnecting_Discord">
+   <property name="text">
+    <string>Connecting Discord</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionCopyright">
+   <property name="text">
+    <string>Copyright</string>
+   </property>
+  </action>
+  <action name="actionReport_Bug">
+   <property name="text">
+    <string>Report Bug</string>
+   </property>
+  </action>
+  <action name="actionTheme">
+   <property name="text">
+    <string>Theme</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

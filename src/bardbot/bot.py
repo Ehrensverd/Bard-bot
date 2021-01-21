@@ -12,7 +12,7 @@ from bardbot.AudioMixer.main_mixer import MainMixer, Monitor
 from bardbot.AudioMixer.scene import Scene
 from bardbot.Controller.controller import Controller
 from bardbot.GUI.gui import init_ui
-from bardbot.Misc.premade_presets import scenes
+
 from dotenv import load_dotenv
 import discord
 from discord import opus
@@ -20,7 +20,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 from pydub import AudioSegment as As
 
-from bardbot.Misc.scene import Scene
+
 
 load_dotenv()
 BOT_TOKEN = os.getenv('TOKEN')
@@ -258,11 +258,12 @@ monitor_playback = True
 
 
 def main():
-
+    print("tresfsdf")
+    #sys.setswitchinterval()
     # Start machinery
     main_mix = MainMixer()
 
-
+    # Read config files and set discord_playback local_playback
 
     playback = None
     # Setup playback
@@ -287,7 +288,7 @@ def main():
         # Setup controller / businiss logic
 
     controller = Controller(main_mix, playback)
-
+    #dummy_scene = controller.import_scene("https://movies-other.ambient-mixer.com/mr--tumnus--house")
     # Setup business logic- called by gui
     # Load Gui
     # ui_thread = threading.Thread(target=init_ui, args=(controller,))
@@ -295,3 +296,6 @@ def main():
     GUI.gui.init_ui(controller)
 
     print("discord actually done")
+
+
+main()

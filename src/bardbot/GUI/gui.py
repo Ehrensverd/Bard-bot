@@ -3,38 +3,36 @@ import time
 
 from PyQt5 import QtCore, Qt, QtGui
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMdiArea, QAction, QMdiSubWindow, QTextEdit, QWidget, QLineEdit, \
-    QInputDialog, QPushButton, QTabWidget, QBoxLayout, QVBoxLayout, QHBoxLayout, QScrollArea
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMdiArea, QAction, QWidget, QInputDialog, QHBoxLayout, QScrollArea, QFileDialog
 import sys
 
+#from bardbot.controllers import SceneController
+from bardbot.GUI.channel_base import ChannelBaseForm
 from bardbot.GUI.channel_widget import Ui_channel_widget
 
 from bardbot.GUI.scene_widget import Ui_scene_widget
-from bardbot.AudioMixer.scene import Scene
 
 
 class SceneWindow(QWidget, Ui_scene_widget):
     def __init__(self, scene=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scene = scene
+        self.scene_controller = SceneController(self.scene)
         self.tabs = []
-
 
         # Setup
         self.scene_ui_setup()
         self.setup_ui_tab(self.scene.active_preset)
         self.setFixedWidth(111)
-        self.setFixedHeight(220)
+        self.setFixedHeight(240)
 
         # self.resize(92, self.height())
         self.preset_list.view().setDragDropMode(Qt.QAbstractItemView.DragDrop)
-
 
         self.open = False
         self.show()
         print("stop")
         print("stop")
-
 
     def scene_ui_setup(self):
         self.setupUi(self)
@@ -48,21 +46,20 @@ class SceneWindow(QWidget, Ui_scene_widget):
         self.expand_button.clicked.connect(self.scene_expander)
         self.play_button.setCheckable(True)
         self.play_button.clicked.connect(self.click_play_button)
-        self.settings_button.clicked.connect(self.settings_button_clicked)
+        self.settings_button.clicked.connect(self.browse_files)
         self.volume_slide.setRange(0, 100)
         self.volume_slide.setValue(self.scene.scene_volume)
-        self.volume_slide.valueChanged.connect(self.volume_slider_changed)
+        self.volume_slide.valueChanged.connect(self.scene_controller.change_volume)
 
         self.balance_pot.setRange(-100, 100)
-        self.balance_pot.setValue(self.scene.scene_balance)
-        self.balance_pot.valueChanged.connect(self.balance_pot_changed)
-
-        #Tabs And channels
+        self.balance_pot.setValue(self.scene.balance)
+        self.balance_pot.valueChanged.connect(self.scene_controller.change_balance)
 
 
-    def settings_button_clicked(self):
-        self.scene.low_pass = not self.scene.low_pass
+    def browse_files(self):
 
+        filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Open file', directory='.', filter='*.mp3')
+        print(filename)
 
     def setup_ui_tab(self, preset):
         preset_object_name = re.sub(r"\W+|^(?=\d)", "_", preset)
@@ -75,11 +72,11 @@ class SceneWindow(QWidget, Ui_scene_widget):
 
         # make Layout and scroll
         tab_layout = QHBoxLayout()
-        #tab.setLayout(tab_layout)
+        # tab.setLayout(tab_layout)
 
         # Fetch Channels
         # call ChannelWidget(channel)  for in
-        for name, channel in self.scene.channels.items():
+        for channel in self.scene.channels:
             channel_widget = ChannelWindow(channel)
             tab_layout.addWidget(channel_widget)
             pass
@@ -106,8 +103,7 @@ class SceneWindow(QWidget, Ui_scene_widget):
         # Put in tabs [] and add to preset tabs
         self.tabs.append(outer_tab)
         self.preset_tabs.addTab(outer_tab, preset)
-        #tab_scroll_area = QScrollArea(tab)
-
+        # tab_scroll_area = QScrollArea(tab)
 
     def add_new_channel(self, channel):
         # Needs to be fixed
@@ -115,15 +111,10 @@ class SceneWindow(QWidget, Ui_scene_widget):
         layout = self.widget.layout()
         layout.insertWidget(layout.count() - 1, label)
 
-    def balance_pot_changed(self, value):
-        self.scene.scene_balance = value
-
-    def volume_slider_changed(self, value):
-        self.scene.scene_volume = value
 
 
     def click_play_button(self):
-        self.scene.scene_playing = not self.scene.scene_playing
+        self.scene_controller.play_pause_scene()
         if self.play_button.isChecked():
             self.play_button.setIcon(self.pause_icon)
         else:
@@ -136,7 +127,7 @@ class SceneWindow(QWidget, Ui_scene_widget):
             self.setFixedWidth(111)
             self.open = False
         else:
-            self.setFixedWidth(944)
+            self.setFixedWidth(1200)
             # self.resize(92, self.height())
             self.open = True
         self.show()
@@ -145,20 +136,19 @@ class SceneWindow(QWidget, Ui_scene_widget):
         pass
 
 
-class ChannelWindow(QWidget, Ui_channel_widget):
+class ChannelWindow(QWidget, ChannelBaseForm):
     def __init__(self, channel=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.channel = channel
-
+        self.setupUi(self)
         # Setup
         self.channel_ui_setup()
-        self.setFixedWidth(94)
-
+        self.setFixedWidth(101)
 
         self.show()
 
     def channel_ui_setup(self):
-        self.setupUi(self)
+
         # Buttons
         self.play_button.setCheckable(True)
         self.play_button.clicked.connect(self.click_play_button)
@@ -166,22 +156,20 @@ class ChannelWindow(QWidget, Ui_channel_widget):
         self.pause_icon = QtGui.QIcon("src/bardbot/GUI/icons/icons8-pause-30.png")
         self.play_icon = QtGui.QIcon("src/bardbot/GUI/icons/icons8-play-30.png")
 
-
         # Label
-        print("Gui Channel:", self.channel.name)
-        self.channel_label.setText(self.channel.name)
-        print("Gui Channel label:", self.channel_label.text())
+
+        self.title_button.setText(self.channel.name)
+
         # Buttons
 
-
         # Volume
-        self.volume_slide.setRange(0, 100)
-        self.volume_slide.setValue(self.channel.volume)
-        self.volume_slide.valueChanged.connect(self.volume_slider_changed)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(self.channel.volume)
+        self.volume_slider.valueChanged.connect(self.volume_slider_changed)
         # Balance
-        self.balance_pot.setValue(self.channel.balance)
-        self.balance_pot.setRange(-100, 100)
-        self.balance_pot.valueChanged.connect(self.balance_pot_changed)
+        self.balance_slider.setValue(self.channel.balance)
+        self.balance_slider.setRange(-100, 100)
+        self.balance_slider.valueChanged.connect(self.balance_pot_changed)
 
     # Events
     def volume_slider_changed(self, value):
@@ -191,12 +179,8 @@ class ChannelWindow(QWidget, Ui_channel_widget):
 
         self.channel.balance = value
 
-
     def click_play_button(self):
-        if self.channel.is_random:
-            self.channel.is_triggered = True
 
-        self.channel.is_playing = not self.channel.is_playing
         if self.play_button.isChecked():
             self.play_button.setIcon(self.pause_icon)
         else:
@@ -217,11 +201,12 @@ class External(QThread):
     countChanged = pyqtSignal(int)
 
     def run(self):
-
-        while  True:
-
+        count = 0
+        while True:
+            count = + 1
             time.sleep(1)
             self.countChanged.emit(count)
+
 
 class MDIWindow(QMainWindow):
     count = 0
@@ -244,7 +229,8 @@ class MDIWindow(QMainWindow):
     def WindowTrig(self, p):
 
         if p.text() == "Import":
-            text, ok = QInputDialog.getText(self, 'Text Input Dialog', "Import from url")
+            text, ok = QInputDialog.getText(self, 'Text Input Dialog', "Import from url",
+                                            text="https://harry-potter-sounds.ambient-mixer.com/gryffindor-common-room")
 
             if ok:
                 imported_scene = self.controller.import_scene(text)
@@ -254,8 +240,6 @@ class MDIWindow(QMainWindow):
                 self.scene_widgets.append(SceneWindow(imported_scene))
                 self.controller.main_mix.playing = True
 
-
-
                 # sub.setWindowTitle("Sub Window" + str(MDIWindow.count))
                 # sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint )
 
@@ -263,8 +247,6 @@ class MDIWindow(QMainWindow):
 
                 # sub.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
                 # sub.setStyleSheet('background-color: grey; border: 3px solid black')
-
-
 
         if p.text() == "Open":
             scene_gui = Ui_scene_widget()
@@ -307,8 +289,8 @@ class MDIWindow(QMainWindow):
         if p.text() == "Tiled":
             self.scene_1 = SceneWindow()
 
-def init_ui(controller):
 
+def init_ui(controller):
     app = QApplication(sys.argv)
     mdi = MDIWindow(controller)
 

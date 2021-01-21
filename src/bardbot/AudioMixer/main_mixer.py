@@ -27,6 +27,7 @@ class MainMixer:
         self.source_added = False
         self.main_segmenter = self.segment_generator()
         print()
+
     def segment_generator(self):
 
         while True:

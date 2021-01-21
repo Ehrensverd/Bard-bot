@@ -37,7 +37,7 @@ class Controller:
         num = 1
 
         def import_channel(item):
-            print( "importing channel")
+            print("importing channel")
             if item.tag.startswith('channel'):
                 if item.findtext('id_audio') == '0':
                     return None
@@ -53,36 +53,35 @@ class Controller:
                     random_unit = item.findtext('random_unit')
                     cross_fade = (item.findtext('crossfade') == 'true')
                     audio_source = AudioSource(url=mp3_url)
-                    # audio_source1 = AudioSource(url=mp3_url)
-                    # audio_source2 = AudioSource(url=mp3_url)
-                    #
-                    # audio_source = AudioSource(url=mp3_url)
-                    #
-                    # audio_source2 = audio_source1
-                    # TODO: check if is_active can be deactivated in ambient-mixer while not random, and if it creates issues.
+                    if cross_fade:
+                        loop_gap = -0.3
+                    else:
+                        loop_gap = 0
                     print("making channels")
-
-                    return Channel(audio_name, audio_source, random_counter, random_unit, balance,
-                                   volume, mute, cross_fade, is_random, not is_random)
+                    channel = Channel(audio_name, audio_source, random_counter, random_unit, balance,
+                                      volume, mute, not is_random, False, False, loop_gap)
+                    return channel
 
         print("making threads finished")
 
         new_urls = [new_url for new_url in ElementTree.parse(url).iter() if new_url.tag.startswith('channel')]
         # print("new")
         # pprint(new_urls)
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     channels = [channel for channel in executor.map(import_channel, new_urls) if
-        #                 channel is not None]
-        channels = self.get_channels(new_urls)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            channels = [channel for channel in executor.map(import_channel, new_urls) if
+                        channel is not None]
+        # channels = self.get_channels(new_urls)
+        pprint(channels)
         preset = self.make_scene_preset(channels)
+        pprint(preset)
         print("making scene finished")
-        return Scene(scene_name, channels, preset, preset)
+        return Scene(scene_name, channels, preset, scene_name)
 
     def make_scene_preset(self, channels):
         """ """
         # TODO Rename channel.preset to channel.fields or channel.values
         print("making scene presets")
-        return {channel.name: channel.preset_fields for channel in channels}
+        return {channel.name: channel.channel_fields() for channel in channels}
 
     def get_channels(self, url):
         """Parses channels from XML file
@@ -111,7 +110,7 @@ class Controller:
                     print("problems?")
                     time.sleep(1)
                     channels.append(Channel(audio_name, audio_source, random_counter, random_unit, balance,
-                                   volume, mute, cross_fade, is_random, not is_random))
+                                            volume, mute, cross_fade, is_random, not is_random))
                 num += 1
         return channels
 
