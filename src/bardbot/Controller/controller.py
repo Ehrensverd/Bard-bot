@@ -7,7 +7,7 @@ from xml.etree import ElementTree
 import requests
 from bs4 import BeautifulSoup
 
-from bardbot.AudioMixer.audio_source import AudioSource
+from bardbot.bards import AudioSource, Channel, Scene
 from bardbot.AudioMixer.channels import Channel
 from bardbot.AudioMixer.scene import Scene
 
