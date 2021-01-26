@@ -142,12 +142,14 @@ class Scene:
         self.channels = channels
         self.paused_channels = {}
 
+        self.active_preset = active_preset
         if presets is None:
             self.presets = self.default_presets()
+            self.active_preset = "Preset 1"
         else:
             self.presets = presets
 
-        self.active_preset = active_preset
+
         self.changing_preset = False
         self.next_preset = None
 
@@ -158,6 +160,7 @@ class Scene:
         self.balance = 0
         self.scene_playing = True
         self.low_pass = False
+
 
     def pause_channel(self, channel):
         self.paused_channels[channel] = self.channels.pop(channel)
