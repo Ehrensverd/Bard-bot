@@ -148,3 +148,5 @@ class Ui_ChannelWindow(object):
         self.channel_mode_box.setItemText(3, _translate("ChannelWindow", "Loop x times                                    :     x                        loops"))
         self.channel_mode_box.setItemText(4, _translate("ChannelWindow", "Loop                                           :                 loop infinitly                            "))
         self.amount_edit.setSuffix(_translate("ChannelWindow", " "))
+
+

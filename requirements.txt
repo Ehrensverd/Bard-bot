@@ -1,0 +1,8 @@
+PyQt5~=5.15.2
+requests~=2.25.1
+pydub~=0.24.1
+beautifulsoup4~=4.9.3
+PyAudio~=0.2.11
+ffmpeg~=1.4
+python-dotenv~=0.15.0
+setuptools~=51.3.3

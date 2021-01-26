@@ -116,3 +116,5 @@ src/bardbot/GUI/
 src/bardbot/Discord/
 src/bardbot/Controller/
 src/bardbot/temp_files/
+src/bardbot/AudioMixer/
+src/bardbot/bot.py
