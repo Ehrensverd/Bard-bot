@@ -126,7 +126,7 @@ class Monitor:
         while True:
 
             if len(self.deque) == 0:
-                print("empty queu")
+
                 try:
 
                     data = next(self.main_mix.main_segmenter)
