@@ -10,6 +10,15 @@ import requests
 from pydub import AudioSegment
 from pydub.utils import ratio_to_db
 
+"""AudioGenerators ie. Bards
+
+MainMixer, Scene and Channel all have a segment_generator()
+which process and yields 20ms audio down the pipeline
+ 
+"""
+# TODO: Make Soundboard class, Scene and Soundboard can both inherit from same class
+
+# TODO: Make Playlist class, that inherits from channels, but has a collection of segments
 
 
 class MainMixer:
@@ -59,8 +68,6 @@ class MainMixer:
 
         self.sources = sources
         self.source_added = False
-
-
 
 
 def save_scene_as(scene, directory_path):
@@ -550,8 +557,31 @@ class Channel:
         pass
 
 
+class Playlist(Channel):
+    """A channel that can have multiple audio files control """
 
+    def __init__(self, name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+                 is_looped=False, is_random=False, is_playing=False, is_global_distinct=False):
+        super().__init__(name, audio_source, random_amount, time_unit, balance=0, volume=50, is_muted=False,
+                         is_looped=False, is_random=False, is_playing=False, is_gloabl_distinct=False)
 
+        # dict { "name" : (pydub.AudioSegment, AudioSource) }
+        self.playlist = {}
+
+    def shuffle(self):
+        pass
+
+    def next_song(self):
+        pass
+
+    def previous_song(self):
+        pass
+
+    def add_song(self, song):
+        pass
+
+    def remove_song(self, song):
+        pass
 
 
 class AudioSource:
