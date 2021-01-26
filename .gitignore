@@ -111,10 +111,10 @@ src/rcp/_pkg_info.py
 
 # Legacy stuff
 
-src/bardbot/Misc/
-src/bardbot/GUI/
-src/bardbot/Discord/
-src/bardbot/Controller/
-src/bardbot/temp_files/
-src/bardbot/AudioMixer/
-src/bardbot/bot.py
+bardbot/Misc/
+bardbot/GUI/
+bardbot/Discord/
+bardbot/Controller/
+bardbot/temp_files/
+bardbot/AudioMixer/
+bardbot/bot.py
