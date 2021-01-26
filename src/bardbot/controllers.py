@@ -1,26 +1,22 @@
 import os
 import sys
-import threading
-from asyncio import get_event_loop
+from pprint import pprint
 
-from PyQt5 import Qt
-from PyQt5.QtCore import QTimer, QObject, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QMainWindow, QInputDialog
-from discord.ext.commands import bot
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject, pyqtSignal, QPropertyAnimation, QSize
+from PyQt5.QtWidgets import QApplication, QInputDialog, QWidget, QGraphicsOpacityEffect
 from dotenv import load_dotenv
 
-from bardbot.AudioMixer.scene import Scene
 from bardbot.AudioMixer.main_mixer import MainMixer, Monitor
+from bardbot.AudioMixer.scene import Scene
+from bardbot.playback import DiscordPlayback
 from bardbot.views import MainView, SceneView
 
 load_dotenv()
 BOT_TOKEN = os.getenv('TOKEN')
 
 
-class DiscordPlayback(object):
-    def __init__(self, slices):
-        self.slices = slices
-    pass
+
 
 
 class MainController(QObject):
@@ -56,8 +52,8 @@ class MainController(QObject):
     def new_scene(self):
         text, ok = QInputDialog.getText(self.main_window, 'Text Input Dialog', "Scene name", text="test test")
         if ok:
-            self.scene_controller = SceneController(new_scene_name=text)
-            self.scene_controller.scene_view
+            self.sources.append(SceneController(new_scene_name=text))
+
 
     def setup_scene(self, scene, scene_widget):
         self.main_mix.append(scene)
@@ -70,6 +66,7 @@ class MainController(QObject):
 
 
 class SceneController(QObject):
+
     def __init__(self, new_scene_name=None, scene: Scene=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -77,14 +74,112 @@ class SceneController(QObject):
             self.scene = Scene(scene_name=new_scene_name, channels=[])
         else:
             self.scene = scene
-        self.scene_view = SceneView()
+
+        self.scene_view = SceneView(self.scene.scene_name)
+
+        self.scene_view.play_pause.connect(self.trigger_scene_play)
+        self.setup_animations()
+        self.setup_signals()
+        # Volume
+        self.muted_value_holder = 0
+        print(self.scene.scene_volume)
+        self.setup_volume()
+
+    def setup_animations(self):
+        start_width =0
+        sum = 0
+
+        for index in range(len(self.scene_view.channel_dock.channel_docks)):
+            sum += 87
+
+        end_width = sum
+
+
+        self.animation = QPropertyAnimation(self.scene_view.preset_tab, b'size')
+        self.animation.setDuration(300)
+        self.animation.setStartValue(QSize(start_width, self.scene_view.preset_tab.height()))
+        self.animation.setEndValue(QSize(end_width,self.scene_view.preset_tab.height()))
+
+
+
+    def setup_volume(self):
+        self.previous_volume = self.scene.scene_volume
+        self.set_view_volume(self.scene.scene_volume)
+
+        self.scene_view.mute_unmute.connect(self.mute_view_clicked)
+        self.scene_view.volume_changed.connect(self.slider_view_changed)
+
+    def mute_view_clicked(self, muting):
+        if muting:
+            self.set_view_volume(0)
+        else:
+            self.set_view_volume(self.previous_volume)
+
+    def slider_view_changed(self, value):
+        self.scene_view.volume_slide.blockSignals(True)
+        self.scene_view.mute_button.blockSignals(True)
+
+        if value == 0 or self.previous_volume == 0:
+            self.scene_view.change_mute_icons(value == 0)
+            self.scene_view.mute_button.setChecked(value == 0)
+
+        self.set_scene_volume(value)
+
+        self.scene_view.volume_slide.blockSignals(False)
+        self.scene_view.mute_button.blockSignals(False)
+
+    def set_view_volume(self, value):
+        self.scene_view.volume_slide.setValue(value)
+
+    def set_scene_volume(self, value):
+        self.previous_volume = self.scene.scene_volume
+        self.scene.scene_volume = value
+
+
+    def setup_signals(self):
+        # parent interface
+
+
+        # child interfave
+
+        # self
+
+        self.scene_view.scene_button_checked.connect(self.expander)
+        # volume
+
+        # Balance
+        self.scene_view.balance_changed.connect(self.change_balance)
+
+    # def adjust_size(self, checked):
+    #     if checked:
+    #         self.scene_view.setFixedWidth(902)
+
+    def expander(self, checked):
+        #TODO calc size based on channels and adjust
+
+        sum = 0
+
+        for index in range(len(self.scene_view.channel_dock.channel_docks)):
+            sum += 87
+
+        sum = sum +87
+        self.scene_view.preset_tab.setMaximumWidth(sum)
+        self.animation.setEndValue(QSize( sum, self.scene_view.preset_tab.height()))
+
+        direction = QtCore.QAbstractAnimation.Forward if checked else QtCore.QAbstractAnimation.Backward
+        # self.animation.setStartValue(0)
+        self.animation.setDirection(direction)
+        self.animation.start()
+
+
+    def trigger_scene_play(self, checked):
+        print(checked)
 
 
     def change_balance(self, value):
+        print(value)
         self.scene.balance = value
 
-    def change_volume(self, value):
-        self.scene.scene_volume = value
 
     def play_pause_scene(self):
         self.scene.scene_playing = not self.scene.scene_playing
