@@ -297,5 +297,3 @@ def main():
 
     print("discord actually done")
 
-
-main()
