@@ -1,0 +1,17 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="icons">
+        <file alias="play.png">icons/icons8-play-90.png</file>
+        <file alias="pause.png">icons/icons8-pause-90.png</file>
+        <file alias="unmute.png">icons/icons8-audio-90.png</file>
+        <file alias="mute.png">icons/icons8-no-audio-90.png</file>
+        <file alias="add_channel.png">icons/icons8-add-song-90.png</file>
+         <file alias="next_preset.png">icons/icons8-end-90.png</file>
+         <file alias="timed.png">icons/icons8-sand-timer-90.png</file>
+        <file alias="lute.png">icons/icons8-oud-100.png</file>
+        <file alias="crossfade.png">icons/crossfade_large.png</file>
+        <file alias="infinite.png">icons/icons8-infinite-90.png</file>
+<!-- <file alias=".png">icons/icons8- -90.png</file> -->
+        <!-- pyrcc5 scene_channel_icons.qrc -o scene_channel_resources.py
+ -->
+    </qresource>
+</RCC>
