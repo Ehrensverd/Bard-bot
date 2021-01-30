@@ -1,24 +1,19 @@
-import asyncio
+import os
 import os
 import sys
 import threading
 from asyncio import get_event_loop
-from pprint import pprint
 
 import discord
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, pyqtSignal, QPropertyAnimation, QSize
-from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import QApplication, QInputDialog, QWidget, QGraphicsOpacityEffect
+from PyQt5.QtCore import QObject, QPropertyAnimation, QSize
+from PyQt5.QtWidgets import QApplication, QInputDialog
 from discord.utils import get
 from dotenv import load_dotenv
-import qdarkstyle
 from validator_collection import checkers
 
-from bardbot.Controller.controller import Controller
-from bardbot.Misc.test_bot import MyClient
+from bardbot.bards import Channel, Scene, MainMixer
 from bardbot.filehandler import FileHandler
-from bardbot.bards import AudioSource, Channel, Scene, MainMixer
 from bardbot.playback import DiscordPlayback, Monitor
 from bardbot.views import MainView, SceneView, ChannelView, AddChannelDialog
 
