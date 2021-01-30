@@ -1,23 +1,79 @@
+import os
 import threading
 import time
+from asyncio import get_event_loop
 from collections import deque
 
 import pyaudio
 from pydub import AudioSegment
+from dotenv import load_dotenv
+import discord
+from discord import opus, Client
+from discord.ext import commands, tasks
+from discord.utils import get
+from pydub import AudioSegment as As
+
+from bardbot.Misc.test_bot import MyClient
 
 
-class DiscordPlayback(object):
-    def __init__(self, slices):
-        self.slices = slices
-    pass
 
 
+
+class DiscordPlayback(discord.AudioSource):
+
+    def __init__(self,  main_mix, size=200,):
+
+        self.source = main_mix.main_segmenter
+        self.is_active = False
+        self.deque = None
+        self.size = size
+        self.silent_slice = AudioSegment.silent(duration=20, frame_rate=48000).set_channels(2)
+        self.deque = deque(maxlen=self.size)
+        self.deque.append(next(self.source))
+
+
+
+
+
+    @tasks.loop(seconds=0.01)
+    async def fill(self):
+        if self.source is None:
+            print("NOPE")
+            return
+
+        if len(self.deque) < self.size:
+            try:
+                if self.is_active:
+                    segment = next(self.source)
+                    self.deque.append(segment)
+                else:
+                    self.deque.append( self.silent_slice)
+            except StopIteration:
+                print(self)
+                print("source depleted")
+
+    def read(self):
+        if self.source is None:
+            print("source is None")
+            return  self.silent_slice.raw_data
+        try:
+            if self.is_active:
+                return self.deque.pop().raw_data
+            else:
+                return self.silent_slice.raw_data
+        except IndexError:
+            print("discord Playback index error ")
+            return  self.silent_slice.raw_data
+
+    def cleanup(self):
+        print("Stopping deque filling")
+        self.fill.stop()
 
 
 class Monitor:
 
     def __init__(self, main_mix=None, size=4):
-
+        self.is_active = True
         self.main_mix = main_mix
         self.source = main_mix.main_segmenter
         self.size = size
@@ -31,6 +87,7 @@ class Monitor:
         self.x.start()
         time.sleep(0.5)
         self.y.start()
+
 
         print("M O N I TO R INIT")
 
@@ -47,12 +104,13 @@ class Monitor:
             if len(self.deque) < self.size:
 
                 try:
-
-                    self.deque.appendleft(next(self.source))
-
+                    if self.is_active:
+                        self.deque.appendleft(next(self.source))
+                    else:
+                        self.deque.appendleft(self.silent_segment_fill)
                 except StopIteration:
                     self.deque.appendleft(self.silent_segment_fill)
-
+                    print("stop itration")
 
 
             else:
@@ -82,11 +140,16 @@ class Monitor:
 
                 try:
 
-                    data = next(self.main_mix.main_segmenter)
+                    data = self.silent_segment_read
                 except StopIteration:
+                    print("read stop itration")
                     data = self.silent_segment_read
             else:
-                data = self.deque.pop()
+                if self.is_active:
+                    data = self.deque.pop()
+                else:
+                    data = self.silent_segment_read
+
             #next(self.source)
             stream.write(data.raw_data)
 
