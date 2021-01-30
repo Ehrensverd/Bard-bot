@@ -1,22 +1,11 @@
-import os
 import threading
 import time
-from asyncio import get_event_loop
 from collections import deque
 
-import pyaudio
-from pydub import AudioSegment
-from dotenv import load_dotenv
 import discord
-from discord import opus, Client
-from discord.ext import commands, tasks
-from discord.utils import get
-from pydub import AudioSegment as As
-
-from bardbot.Misc.test_bot import MyClient
-
-
-
+import pyaudio
+from discord.ext import tasks
+from pydub import AudioSegment
 
 
 class DiscordPlayback(discord.AudioSource):
