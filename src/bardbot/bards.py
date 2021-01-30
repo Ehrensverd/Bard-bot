@@ -35,7 +35,7 @@ class MainMixer:
 
         self.source_added = False
         self.main_segmenter = self.segment_generator()
-        print()
+
 
     def segment_generator(self):
 
@@ -45,11 +45,10 @@ class MainMixer:
             if self.playing:
 
 
-                for source in self.sources:
+                for _ ,source in self.sources:
                     # only active channels are yielded from
                     if source.scene_playing:
                         try:
-
                             segment = segment.overlay(next(source.segmenter))
                         except StopIteration:
                             print(source.name, "finished playing")
@@ -59,7 +58,7 @@ class MainMixer:
 
     def add_source(self, source):
         self.source_added = True
-        print("adding source to mixer")
+
         sources = []
         if source not in self.sources:
             for s in self.sources:
@@ -73,7 +72,7 @@ class MainMixer:
 def save_scene_as(scene, directory_path):
     # if file_path exist confirm overwrite
     if path.exists(directory_path):
-        print("scene  exists, overwrite")
+
         # qt dialog
         return
 
@@ -89,12 +88,12 @@ def save_scene_as(scene, directory_path):
 
 def load_scene(directory_path, active_preset):
     # TODO remove from stage class, make utility.
-    print("Loading scene from path:", directory_path)
+
     with open(directory_path + "presets.txt", 'rb') as f:
         scenes = pickle.load(f)
 
     scene_name = os.path.basename(os.path.normpath(directory_path))
-    print("Scene name:", scene_name)
+
     return Scene(scene_name, load_channels(directory_path + "/channels/", scenes[active_preset]), scenes, active_preset)
 
 
@@ -187,7 +186,7 @@ class Scene:
         self.segmenter = self.scene_generator()
         self.scene_volume = 50
         self.balance = 0
-        self.scene_playing = True
+        self.scene_playing = False
         self.low_pass = False
 
 
@@ -218,20 +217,18 @@ class Scene:
             if self.scene_playing:
                 if self.changing_preset:
                     self.preset_changer()
-                for channel in self.channels:
+                for _, channel in self.channels:
 
                     if channel.is_paused:
                         channel.pause_offset += 20
 
-                    elif channel.is_triggered or channel.next_play_time <= self.sec + (self.min * 60):
+                    elif channel.is_triggered or channel.next_play_time <= self.sec + (self.min * 60) +channel.pause_offset:
                         try:
-
-                            channel_segment = next(channel.seg_gen).apply_gain(ratio_to_db(channel.volume / 25))
+                            channel_segment = next(channel.seg_gen).apply_gain(ratio_to_db(channel.volume / 50))
                             segment = segment.overlay(channel_segment.pan(self.balance_panning(channel.balance)))
                         except StopIteration:
                             print(channel.name, "error yielding")  # consider reinitializing here if issues
                             continue
-
             yield segment.apply_gain(ratio_to_db(self.scene_volume / 25))
 
     def balance_panning(self, channel_balance):
@@ -310,6 +307,10 @@ class Scene:
         channel_presets = {channel.name: channel.preset_fields() for channel in self.channels}
         return channel_presets
 
+def match_target_amplitude(sound, target_dBFS):
+    change_in_dBFS = target_dBFS - sound.dBFS
+    return sound.apply_gain(change_in_dBFS)
+
 
 class Channel:
     """
@@ -386,10 +387,9 @@ class Channel:
 
     """
 
-    def __init__(self, name, audio_source, random_amount, random_time_unit, balance=0, volume=50, is_muted=False,
-                 is_looped=False, is_paused=False, is_global_distinct=False, loop_gap=0,
+    def __init__(self, name, audio_source, random_amount=1, random_time_unit="1h", balance=0, volume=50, is_muted=False,
+                 is_looped=True, is_paused=True, is_global_distinct=False, loop_gap=0,
                  loops=float("inf")):
-        # TODO: is name needed? Since Channels are dict { channel_name : channel_instance }
 
         self.name = name
         self.audio_source = audio_source
@@ -400,14 +400,17 @@ class Channel:
         self.fade_in_amount = 60
         self.fade_out_amount = self.fade_in_amount
         # Segment
-        self.segment = AudioSegment.from_file(io.BytesIO(self.audio_source.mp3), format='mp3',
-                                              parameters=["-vol", str(1)])
+        self.segment = AudioSegment.from_mp3(self.audio_source)
 
-        print(self.name, "\nDuration:", self.segment.duration_seconds)
-        print()
+
+        #
+        # sound = self.segment
+        # normalized_sound = match_target_amplitude(sound, -40.0)
+        # self.segment = normalized_sound
+
         # chunk larger segments for smaller ffmpeg subprocesses to prevent playback starvation
-        if self.segment.duration_seconds > 45:
-            sliced_chunks = self.segment[::45001]
+        if self.segment.duration_seconds > 5:
+            sliced_chunks = self.segment[::5001]
             self.segment = None  # AudioSegment.empty()
             current_chunk = next(sliced_chunks, None)
             while True:
@@ -421,8 +424,7 @@ class Channel:
                     break
                 current_chunk = next_chunk
         else:
-            self.segment.set_frame_rate(48000).fade_in(self.fade_in_amount).fade_out(self.fade_out_amount)
-
+            self.segment = self.segment.set_frame_rate(48000).fade_in(self.fade_in_amount).fade_out(self.fade_out_amount)
 
         self.is_paused = is_paused
         self.pause_offset = 0
@@ -435,8 +437,8 @@ class Channel:
         self.loops = loops
 
         self.is_looped = is_looped
-        if self.loop_gap < 0:
-            self.initial, self.crossfaded_segment = self.crossfader()
+
+        self.initial, self.crossfaded_segment = self.crossfader()
 
         # Random
         self.random_amount = random_amount
@@ -490,28 +492,32 @@ class Channel:
         Once a random segment is depleted its set to not active and
         generator ends
         """
-        print(" segment")
+        #print(" segment")
         if self.is_looped and self.loop_gap < 0:
             yield from self.initial
             self.next_play_time = next(self.schedule)
 
         while True:
-            print(self.name, " is triggered: ", str(self.is_triggered))
+            #print(self.name, " is triggered: ", str(self.is_triggered))
             if self.is_looped and self.loop_gap < 0:
                 yield from self.crossfaded_segment[::20]
             else:
                 yield from self.segment[::20]
 
-            print("done yielding", self.name)
+            #print("done yielding", self.name)
             if not self.is_triggered:
-                print(self.name, " next playtime:", round(self.next_play_time), 2)
+                #print(self.name, " next playtime:", round(self.next_play_time), 2)
                 self.next_play_time = next(self.schedule)
             else:
                 self.is_triggered = False
 
     def loop_scheduler(self, scene_time_offset=0):
+        if self.loop_gap < 0:
+            loop_gap = 0
+        else:
+            loop_gap = self.loop_gap
         # initial loop setup
-        loop_duration = self.segment.duration_seconds + self.loop_gap
+        loop_duration = self.segment.duration_seconds + loop_gap
         remaining_loops = self.loops
         self.pause_offset = 0
         self.next_play_time = scene_time_offset
@@ -521,7 +527,7 @@ class Channel:
         while remaining_loops > 0:
             self.next_play_time = loop_duration + self.next_play_time
             remaining_loops -= 1
-            yield self.next_play_time + self.pause_offset
+            yield self.next_play_time
 
         if remaining_loops <= 0:
             yield float("inf")
@@ -544,7 +550,7 @@ class Channel:
             while True:
                 try:
                     next_play_time = next(start_times) / 1000
-                    yield next_play_time + (iterations * self.random_time_unit) + scene_time_offset + self.pause_offset
+                    yield next_play_time + (iterations * self.random_time_unit) + scene_time_offset
                 except StopIteration:
                     print('Segment ', self.name, ' schedule depleted')
                     break
@@ -636,3 +642,15 @@ class AudioSource:
     def save(self, audio_segment):
         audio_segment.export(self.file_path, format="mp3")
 
+
+ #
+ #
+ # print("PRE:")
+ #        print("dbfs", self.segment.dBFS)
+ #        print("duratio", self.segment.duration_seconds)
+ #        print("sample width", self.segment.sample_width)
+ #        print("frame rate", self.segment.frame_rate)
+ #        print("rms", self.segment.rms)
+ #        print("max", self.segment.max)
+ #        print("max possible", self.segment.max_possible_amplitude)
+ #        print("max dbfs", self.segment.max_dBFS)
