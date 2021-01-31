@@ -61,7 +61,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "bardbot=bardbot.bot:main",
+            "bardbot=bardbot.controllers:main",
         ],
     },
     python_requires=">=3.6",

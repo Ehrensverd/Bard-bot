@@ -4,4 +4,4 @@
 # don't change, don't track in version control
 __author__ = 'Eskil Oscar Ehrensvärd'
 __homepage__ = 'https://github.com/Ehrensverd/Bard-bot'
-__version__ = '0.1.dev65+g78d32d0.d20210121'
+__version__ = '0.1.dev93+gd1ec369.d20210131'
